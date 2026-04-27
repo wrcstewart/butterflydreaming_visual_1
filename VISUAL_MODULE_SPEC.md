@@ -589,3 +589,30 @@ The title of index.html should be:
 BUTTERFLY DREAMING - SIMPLE EXAMPLE OF TEXT TO MEDIA (VISUAL KOLAM)
 
 Respect the capitalisation exactly as shown above.
+
+### Amendment 2 — Default Grammar Revision
+
+The original default L-system score specified:
+
+```
+axiom: FBFBFBFB
+A: AFBFA
+B: AFBFBFBFA
+```
+
+This grammar produces only F, A, and B symbols after rewriting — zero turn symbols (+, -).
+As a result, the turtle interpreter walks in a straight line to coordinates exceeding the
+canvas bounds and produces no visible rendering.
+
+The default score has been replaced with a confirmed working grammar that produces
+a recognisable 8-fold closed-loop pattern:
+
+```
+axiom: F+F+F+F+F+F+F+F
+F: F-F+F+F-F
+```
+
+With parameters: `%%bd_angle 45`, `%%bd_depth 4`, `%%bd_symmetry 8`.
+
+This grammar ensures that the rewritten string contains turn symbols and produces
+an interlocking pattern suitable for demonstrating the rendering pipeline.
