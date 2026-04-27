@@ -1,0 +1,460 @@
+<!-- ButterflyDreaming Visual Module — visual_module.html — BD Protocol v0.1 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ButterflyDreaming — Visual Module</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #0a0a0f;
+      color: #e8e8e0;
+      font-family: Georgia, 'Times New Roman', serif;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.4rem;
+      min-height: 100vh;
+    }
+
+    #status {
+      font-size: 0.85rem;
+      font-style: italic;
+      color: #9e9e90;
+      letter-spacing: 0.04em;
+      min-height: 1.4rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    button {
+      background: #0f0f18;
+      border: 1px solid #4a9b8e;
+      color: #4a9b8e;
+      cursor: pointer;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      padding: 0.45rem 1.1rem;
+      text-transform: uppercase;
+    }
+
+    button:hover {
+      background: #1a2a28;
+    }
+
+    button:active {
+      background: #243f3b;
+    }
+
+    .canvas-wrapper {
+      display: flex;
+      justify-content: center;
+      flex: 1;
+    }
+
+    canvas {
+      border: 1px solid #4a9b8e;
+      border-opacity: 0.3;
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="status">Ready</div>
+
+  <div class="controls">
+    <button id="send-back-btn">Send Back</button>
+  </div>
+
+  <div class="canvas-wrapper">
+    <canvas id="kolam-canvas" width="560" height="560"></canvas>
+  </div>
+
+  <!-- lindenmayer library for L-system rewriting -->
+  <script src="https://cdn.jsdelivr.net/npm/lindenmayer/dist/lindenmayer.browser.js"></script>
+
+  <script>
+    'use strict';
+
+    // ── Element refs ──────────────────────────────────────────────────────────
+    const statusEl       = document.getElementById('status');
+    const sendBackBtn    = document.getElementById('send-back-btn');
+    const canvas         = document.getElementById('kolam-canvas');
+    const ctx            = canvas.getContext('2d');
+
+    // ── Module state ──────────────────────────────────────────────────────────
+    let storedText = ''; // full node text, saved for Send Back
+    let lastError  = null;
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    const setStatus = (msg) => { statusEl.textContent = msg; };
+
+    const postToParent = (message) => {
+      window.parent.postMessage(message, '*');
+    };
+
+    // ── %%bd_ Parser ──────────────────────────────────────────────────────────
+    // Two-state machine: text state and bracket state.
+    // Returns object of directive name/value pairs.
+    // Multi-line directives with [ ] have their raw text (including newlines) as value.
+    function parseBD(text) {
+      const directives = {};
+      const lines = text.split('\n');
+      let state = 'text';
+      let currentDirective = null;
+      let currentLines = [];
+
+      for (const line of lines) {
+        if (state === 'text') {
+          if (line.startsWith('%%bd_')) {
+            const spaceIdx = line.indexOf(' ');
+            if (spaceIdx === -1) continue;
+            const name = line.slice(5, spaceIdx);
+            const value = line.slice(spaceIdx + 1).trim();
+            if (value === '[') {
+              currentDirective = name;
+              currentLines = [];
+              state = 'bracket';
+            } else {
+              directives[name] = value;
+            }
+          }
+        } else if (state === 'bracket') {
+          if (line.trim() === '%%bd_]') {
+            directives[currentDirective] = currentLines.join('\n');
+            state = 'text';
+          } else {
+            currentLines.push(line);
+          }
+        }
+      }
+      return directives;
+    }
+
+    // ── Score Parser ──────────────────────────────────────────────────────────
+    // Extract axiom and production rules from %%bd_score content.
+    function parseScore(scoreText) {
+      const result = { axiom: '', productions: {} };
+      for (const line of scoreText.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        if (trimmed.startsWith('axiom:')) {
+          result.axiom = trimmed.slice(6).trim();
+        } else {
+          const colonIdx = trimmed.indexOf(':');
+          if (colonIdx !== -1) {
+            const symbol = trimmed.slice(0, colonIdx).trim();
+            const replacement = trimmed.slice(colonIdx + 1).trim();
+            result.productions[symbol] = replacement;
+          }
+        }
+      }
+      return result;
+    }
+
+    // ── Turtle State ──────────────────────────────────────────────────────────
+    function createTurtleState(x, y) {
+      return {
+        x: x,
+        y: y,
+        angle: 0,
+        stack: []
+      };
+    }
+
+    // ── Curved Line Drawing ───────────────────────────────────────────────────
+    // Draw a quadratic bezier curve for a turtle forward step.
+    // Control point offset perpendicular to direction.
+    function drawCurvedStep(ctx, state, step) {
+      const rad = (state.angle * Math.PI) / 180;
+      const nextX = state.x + Math.cos(rad) * step;
+      const nextY = state.y + Math.sin(rad) * step;
+
+      // Control point perpendicular to direction
+      const perpRad = rad + Math.PI / 2;
+      const cpOffset = step * 0.3;
+      const cpx = (state.x + nextX) / 2 + Math.cos(perpRad) * cpOffset;
+      const cpy = (state.y + nextY) / 2 + Math.sin(perpRad) * cpOffset;
+
+      ctx.quadraticCurveTo(cpx, cpy, nextX, nextY);
+      state.x = nextX;
+      state.y = nextY;
+    }
+
+    // ── Turtle Interpreter ───────────────────────────────────────────────────
+    // Run turtle graphics for the L-system result string.
+    // Returns { startX, startY, endX, endY } for closure check.
+    function interpretTurtle(lsystemResult, params) {
+      const offscreen = document.createElement('canvas');
+      offscreen.width = canvas.width;
+      offscreen.height = canvas.height;
+      const octx = offscreen.getContext('2d');
+
+      // Start from centre
+      const state = createTurtleState(canvas.width / 2, canvas.height / 2);
+      const startX = state.x;
+      const startY = state.y;
+      const startAngle = state.angle;
+      let minX = state.x;
+      let minY = state.y;
+      let maxX = state.x;
+      let maxY = state.y;
+
+      // Canvas styling
+      octx.strokeStyle = params.stroke;
+      octx.lineWidth = params.weight;
+      octx.lineCap = 'round';
+      octx.lineJoin = 'round';
+
+      octx.beginPath();
+      octx.moveTo(state.x, state.y);
+
+      // Symbol dispatch
+      for (const symbol of lsystemResult) {
+        switch (symbol) {
+          case 'F':
+            // Move forward drawing curved line
+            drawCurvedStep(octx, state, params.step);
+            minX = Math.min(minX, state.x);
+            minY = Math.min(minY, state.y);
+            maxX = Math.max(maxX, state.x);
+            maxY = Math.max(maxY, state.y);
+            break;
+
+          case 'f':
+            // Move forward without drawing
+            const rad = (state.angle * Math.PI) / 180;
+            state.x += Math.cos(rad) * params.step;
+            state.y += Math.sin(rad) * params.step;
+            octx.moveTo(state.x, state.y);
+            minX = Math.min(minX, state.x);
+            minY = Math.min(minY, state.y);
+            maxX = Math.max(maxX, state.x);
+            maxY = Math.max(maxY, state.y);
+            break;
+
+          case '+':
+            // Turn left
+            state.angle += params.angle;
+            break;
+
+          case '-':
+            // Turn right
+            state.angle -= params.angle;
+            break;
+
+          case '[':
+            // Push state
+            state.stack.push({
+              x: state.x,
+              y: state.y,
+              angle: state.angle
+            });
+            break;
+
+          case ']':
+            // Pop state
+            if (state.stack.length > 0) {
+              const saved = state.stack.pop();
+              octx.stroke();
+              state.x = saved.x;
+              state.y = saved.y;
+              state.angle = saved.angle;
+              octx.beginPath();
+              octx.moveTo(state.x, state.y);
+              minX = Math.min(minX, state.x);
+              minY = Math.min(minY, state.y);
+              maxX = Math.max(maxX, state.x);
+              maxY = Math.max(maxY, state.y);
+            }
+            break;
+
+          case '|':
+            // Reverse (turn 180 degrees)
+            state.angle += 180;
+            break;
+
+          default:
+            // Silently ignore all other symbols (rewriting placeholders like A, B)
+            break;
+        }
+      }
+
+      octx.stroke();
+
+      return {
+        offscreen: offscreen,
+        startX: startX,
+        startY: startY,
+        endX: state.x,
+        endY: state.y
+      };
+    }
+
+    // ── Symmetry Wrapper ──────────────────────────────────────────────────────
+    // Stamp the offscreen canvas n times with rotational symmetry.
+    function applySymmetry(offscreen, symmetry) {
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const sectorAngle = (2 * Math.PI) / symmetry;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      for (let i = 0; i < symmetry; i++) {
+        ctx.rotate(sectorAngle);
+        ctx.drawImage(offscreen, -cx, -cy);
+      }
+      ctx.restore();
+    }
+
+    // ── Closure Checker ───────────────────────────────────────────────────────
+    // Check if the path closes (end position ≈ start position).
+    function checkClosure(startX, startY, endX, endY, step) {
+      const dist = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
+      return dist < step / 2;
+    }
+
+    // ── Render Function ───────────────────────────────────────────────────────
+    // Called on BD_INIT. Parses directives, runs L-system, renders kolam.
+    function render(nodeText) {
+      try {
+        setStatus('Rendering…');
+        storedText = nodeText;
+
+        if (typeof nodeText !== 'string') {
+          console.error('visual_module: render() expected text string, got:', nodeText);
+          throw new Error('No valid text provided in BD_INIT payload');
+        }
+
+        // Parse directives
+        const directives = parseBD(nodeText);
+
+        // Extract and parse score block
+        const scoreRaw = directives.score;
+        if (!scoreRaw) {
+          throw new Error('No score found in node text');
+        }
+
+        const score = parseScore(scoreRaw);
+        if (!score.axiom) {
+          throw new Error('No axiom found in score');
+        }
+
+        // Apply defaults for any missing rendering parameters
+        const params = {
+          symmetry:  parseInt(directives.symmetry, 10)  || 8,
+          depth:     parseInt(directives.depth, 10)     || 4,
+          step:      parseFloat(directives.step)        || 40,
+          angle:     parseFloat(directives.angle)       || 90,
+          stroke:    directives.stroke                  || '#4a9b8e',
+          background: directives.background             || '#0a0a0f',
+          weight:    parseFloat(directives.weight)      || 1.5
+        };
+
+        // Cap depth at 6
+        if (params.depth > 6) {
+          params.depth = 6;
+          setStatus('Rendering… (depth capped at 6)');
+        }
+
+        // Clear canvas with background
+        ctx.fillStyle = params.background;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Add subtle border
+        ctx.strokeStyle = params.stroke;
+        ctx.globalAlpha = 0.3;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1;
+
+        // Run L-system rewriting
+        const lsystem = new LSystem({
+          axiom: score.axiom,
+          productions: score.productions
+        });
+        lsystem.iterate(params.depth);
+        const lsystemResult = lsystem.getString();
+
+        if (!lsystemResult) {
+          throw new Error('L-system produced no output');
+        }
+
+        // Run turtle interpreter
+        const turtle = interpretTurtle(lsystemResult, params);
+
+        // Apply symmetry
+        applySymmetry(turtle.offscreen, params.symmetry);
+
+        // Check closure
+        const isClosed = checkClosure(turtle.startX, turtle.startY, turtle.endX, turtle.endY, params.step);
+
+        // Update status
+        if (isClosed) {
+          setStatus('Ready');
+        } else {
+          setStatus('Rendered — note: path does not close (kolam constraint not satisfied)');
+        }
+
+        lastError = null;
+
+      } catch (err) {
+        lastError = err.message;
+        setStatus(`Error: ${err.message}`);
+        postToParent({ type: 'BD_ERROR', payload: { message: err.message } });
+        console.error('render error:', err);
+      }
+    }
+
+    // ── Message Handlers ──────────────────────────────────────────────────────
+    window.addEventListener('message', (event) => {
+      try {
+        const { type, payload } = event.data;
+        switch (type) {
+          case 'BD_INIT': {
+            const rawText = payload && payload.text;
+            const nodeText = typeof rawText === 'string' ? rawText : rawText == null ? '' : String(rawText);
+            render(nodeText);
+            break;
+          }
+
+          case 'BD_STOP':
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            setStatus('Stopped');
+            break;
+
+          default:
+            // Ignore unrecognised types
+            break;
+        }
+      } catch (err) {
+        console.error('visual_module: error handling postMessage', err);
+      }
+    });
+
+    // ── Send Back Button ──────────────────────────────────────────────────────
+    sendBackBtn.addEventListener('click', () => {
+      postToParent({ type: 'BD_UPDATE', payload: { text: storedText } });
+    });
+
+    // ── Signal module loaded ──────────────────────────────────────────────────
+    postToParent({ type: 'BD_READY' });
+  </script>
+
+</body>
+</html>

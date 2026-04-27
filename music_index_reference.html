@@ -1,0 +1,291 @@
+<!-- ButterflyDreaming Media Module — index.html — BD Protocol v0.1 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ButterflyDreaming — Simple Example of Text to Media</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #0a0a0f;
+      color: #e8e8e0;
+      font-family: Georgia, 'Times New Roman', serif;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: normal;
+      color: #4a9b8e;
+      letter-spacing: 0.08em;
+      margin-bottom: 1.8rem;
+      text-transform: uppercase;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    label {
+      font-size: 0.8rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #4a9b8e;
+    }
+
+    textarea {
+      background: #0f0f18;
+      color: #e8e8e0;
+      border: 1px solid #2a2a3a;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      padding: 0.75rem;
+      resize: vertical;
+      width: 100%;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: #4a9b8e;
+    }
+
+    #abc-input {
+      height: 410px;
+    }
+
+    button {
+      background: #0f0f18;
+      border: 1px solid #4a9b8e;
+      color: #4a9b8e;
+      cursor: pointer;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      padding: 0.5rem 1.2rem;
+      text-transform: uppercase;
+      width: 100%;
+    }
+
+    button:hover {
+      background: #1a2a28;
+    }
+
+    button:active {
+      background: #243f3b;
+    }
+
+    .status {
+      border: 1px solid #2a2a3a;
+      color: #9e9e90;
+      font-size: 0.8rem;
+      font-style: italic;
+      min-height: 2.2rem;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .panel-label {
+      font-size: 0.8rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #4a9b8e;
+    }
+
+    /* Amendment 4: container is always present; iframe is injected lazily */
+    #module-container {
+      border: 1px solid #2a2a3a;
+      height: 504px;
+      width: 100%;
+    }
+
+    #module-container iframe {
+      border: none;
+      display: block;
+      height: 100%;
+      width: 100%;
+    }
+
+    .intro {
+      margin-bottom: 1.8rem;
+      opacity: 0.6;
+    }
+
+    .intro-title {
+      color: #4a9b8e;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.6rem;
+      text-transform: uppercase;
+    }
+
+    .intro p {
+      font-size: 0.78rem;
+      line-height: 1.6;
+      margin-bottom: 0.5rem;
+    }
+
+    .intro-rule {
+      border: none;
+      border-top: 1px solid #2a2a3a;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>ButterflyDreaming — Simple Example of Text to Media</h1>
+
+  <section class="intro">
+    <p class="intro-title">Simple Example of Text to Media — ButterflyDreaming Platform</p>
+    <p>This page demonstrates how a text node from the ButterflyDreaming graph can drive a media module. In the live platform the ABC notation and %%bd_ directives shown below would be found in a graph node, discovered and edited collaboratively by two anonymous users during a dyadic encounter.</p>
+    <p>The %%bd_ directives are a shared platform language — each directive is available to all media modules, which are free to interpret them in their own way or ignore them silently. A directive that controls reverb in a music module might influence colour or motion in a visual module.</p>
+    <p>In ButterflyDreaming the creative process is always collaborative. New nodes are produced by merge-editing of ancestor nodes, so the set of directives a user encounters grows gradually through inheritance rather than being invented from scratch. This protects users from being overwhelmed by unfamiliar parameters — each new directive arrives with the context of where it came from.</p>
+    <hr class="intro-rule">
+  </section>
+
+  <div class="layout">
+
+    <!-- Left column: controls -->
+    <div class="panel">
+      <label for="abc-input">Extended ABC Notation</label>
+      <textarea id="abc-input" spellcheck="false">%%bd_module music_module.html
+%%bd_reverb_wet 0.35
+%%bd_reverb_decay 2.5
+%%bd_vibrato_frequency 5.0
+%%bd_vibrato_depth 0.2
+%%bd_chorus_wet 0.3
+%%bd_chorus_depth 0.4
+%%bd_loop true
+%%bd_loop_gap 6
+%%bd_score [
+X:1
+T:Dream Fragment
+M:4/4
+L:1/8
+Q:1/4=60
+K:Amin
+|A2 B2 [CEA]4 d2|e4 [EAc]4|
+|A2 c2 e2 c2|A4 E4|
+%%bd_]</textarea>
+
+      <button id="send-btn">Send to Player</button>
+
+      <label>Status</label>
+      <div class="status" id="status-display">Press Send to Player to load the module.</div>
+    </div>
+
+    <!-- Right column: player container — iframe injected on first use -->
+    <div class="panel">
+      <div class="panel-label">Player</div>
+      <!--
+        Amendment 4: pool-based lazy loading.
+        No iframe exists here at startup. The first "Send to Player" click
+        creates it. Thereafter it is kept alive and reused — never reloaded.
+        In a multi-module platform, additional module types would each get their
+        own iframe here, shown/hidden as needed.
+      -->
+      <div id="module-container"></div>
+    </div>
+
+  </div>
+
+  <script>
+    // ── Element refs ──────────────────────────────────────────────────────────
+    const textarea      = document.getElementById('abc-input');
+    const sendBtn       = document.getElementById('send-btn');
+    const statusDisplay = document.getElementById('status-display');
+    const container     = document.getElementById('module-container');
+
+    // ── Module iframe state (Amendment 4) ─────────────────────────────────────
+    let moduleFrame  = null;  // iframe element, null until first use
+    let moduleReady  = false; // true once BD_READY has been received
+    let pendingText  = null;  // BD_INIT text queued while module is loading
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    const setStatus = (text) => { statusDisplay.textContent = text; };
+
+    // Post a message to the music module iframe.
+    // Origin is '*' during development.
+    // TODO: tighten to 'https://butterflydreaming.info' in production.
+    const postToModule = (message) => {
+      moduleFrame.contentWindow.postMessage(message, '*');
+    };
+
+    // ── Send to Player ────────────────────────────────────────────────────────
+    sendBtn.addEventListener('click', () => {
+      const text = textarea.value;
+
+      if (!moduleFrame) {
+        // First click: create the iframe and queue the init message.
+        // BD_INIT will be sent automatically when BD_READY arrives.
+        pendingText = text;
+        moduleFrame = document.createElement('iframe');
+        moduleFrame.src   = 'music_module.html';
+        moduleFrame.title = 'ButterflyDreaming Music Module';
+        moduleFrame.allow = 'autoplay';
+        container.appendChild(moduleFrame);
+        setStatus('Loading module…');
+      } else if (moduleReady) {
+        // Module already loaded — send immediately
+        postToModule({ type: 'BD_INIT', payload: { text } });
+      } else {
+        // Module loading but not yet ready — update the queued text
+        pendingText = text;
+      }
+    });
+
+    // ── Listen for messages from the module ───────────────────────────────────
+    window.addEventListener('message', (event) => {
+      // Origin is '*' during development.
+      // TODO: tighten to 'https://butterflydreaming.info' in production.
+      try {
+        const { type, payload } = event.data;
+
+        switch (type) {
+          case 'BD_READY':
+            moduleReady = true;
+            setStatus('Module ready');
+            // Dispatch any init that was queued while the module was loading
+            if (pendingText !== null) {
+              postToModule({ type: 'BD_INIT', payload: { text: pendingText } });
+              pendingText = null;
+            }
+            break;
+
+          case 'BD_UPDATE':
+            textarea.value = payload.text;
+            setStatus('Received update from module');
+            break;
+
+          case 'BD_ERROR':
+            setStatus(`Error: ${payload.message}`);
+            break;
+
+          default:
+            // Ignore unrecognised types — other postMessage traffic may arrive
+            break;
+        }
+      } catch (err) {
+        console.error('index: error handling postMessage', err);
+      }
+    });
+  </script>
+
+</body>
+</html>

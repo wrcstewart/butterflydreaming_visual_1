@@ -1,0 +1,742 @@
+<!-- ButterflyDreaming Media Module — music_module.html — BD Protocol v0.1 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ButterflyDreaming — Simple Example of Text to Media</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #0a0a0f;
+      color: #e8e8e0;
+      font-family: Georgia, 'Times New Roman', serif;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.4rem;
+      min-height: 100vh;
+    }
+
+    #status {
+      font-size: 0.85rem;
+      font-style: italic;
+      color: #9e9e90;
+      letter-spacing: 0.04em;
+      min-height: 1.4rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    button {
+      background: #0f0f18;
+      border: 1px solid #4a9b8e;
+      color: #4a9b8e;
+      cursor: pointer;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      padding: 0.45rem 1.1rem;
+      text-transform: uppercase;
+    }
+
+    button:hover:not(:disabled) { background: #1a2a28; }
+    button:active:not(:disabled) { background: #243f3b; }
+    button:disabled {
+      border-color: #2a2a3a;
+      color: #3a3a4a;
+      cursor: not-allowed;
+    }
+
+    /* ── Reverb controls ───────────────────────────────────────────────────── */
+    #reverb-section {
+      border: 1px solid #1e1e2a;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      padding: 0.75rem;
+    }
+
+    .section-label {
+      color: #4a9b8e;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .slider-row {
+      align-items: center;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .slider-end-label {
+      color: #6a8a84;
+      font-size: 0.7rem;
+      letter-spacing: 0.04em;
+      min-width: 2.4rem;
+      text-transform: uppercase;
+    }
+
+    .slider-end-label.right {
+      text-align: right;
+    }
+
+    .slider-row input[type="range"] {
+      accent-color: #4a9b8e;
+      cursor: pointer;
+      flex: 1;
+    }
+
+    .decay-marks {
+      color: #3a4a48;
+      display: flex;
+      font-size: 0.62rem;
+      justify-content: space-between;
+      letter-spacing: 0.02em;
+      /* indent to align with the slider track */
+      padding: 0 0.25rem;
+    }
+
+    #decay-display,
+    #freq-display {
+      color: #9e9e90;
+      font-size: 0.75rem;
+      font-style: italic;
+      min-width: 3.2rem;
+      text-align: right;
+    }
+
+    /* ── Vibrato controls ──────────────────────────────────────────────────── */
+    #vibrato-section {
+      border: 1px solid #1e1e2a;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      padding: 0.75rem;
+    }
+
+    .freq-marks {
+      color: #3a4a48;
+      display: flex;
+      font-size: 0.62rem;
+      justify-content: space-between;
+      letter-spacing: 0.02em;
+      padding: 0 0.25rem;
+    }
+
+    #module-label {
+      color: #5a6a68;
+      font-size: 0.7rem;
+      letter-spacing: 0.03em;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    /* ── Chorus controls ───────────────────────────────────────────────────── */
+    #chorus-section {
+      border: 1px solid #1e1e2a;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      padding: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="status">Loading samples…</div>
+
+  <div class="controls">
+    <button id="play-pause-btn" disabled>Play</button>
+    <button id="stop-btn" disabled>Stop</button>
+    <!-- Amendment 6: text lives in the harness; Send Back returns stored text
+         with current %%bd_ parameters encoded (Amendment 9) -->
+    <button id="send-back-btn">Send Back</button>
+    <!-- Amendment 17: module name drawn from %%bd_module, fallback to filename -->
+    <span id="module-label">Module: music_module.html</span>
+  </div>
+
+  <!-- Amendment 9: reverb controls -->
+  <div id="reverb-section">
+    <span class="section-label">Reverb</span>
+
+    <div class="slider-row">
+      <span class="slider-end-label">Dry</span>
+      <input type="range" id="wet-slider" min="0" max="1" step="0.01" value="0.35">
+      <span class="slider-end-label right">Wet</span>
+    </div>
+
+    <div class="slider-row">
+      <span class="slider-end-label">Decay</span>
+      <input type="range" id="decay-slider" min="-1" max="2" step="0.01" value="0.40"
+             list="decay-marks-list">
+      <datalist id="decay-marks-list">
+        <option value="-1"></option>
+        <option value="0"></option>
+        <option value="1"></option>
+        <option value="2"></option>
+      </datalist>
+      <span id="decay-display">2.5s</span>
+    </div>
+    <!-- guide marks for the decay slider exponent positions -->
+    <div class="decay-marks">
+      <span>0.1s</span><span>1s</span><span>10s</span><span>100s</span>
+    </div>
+  </div>
+
+  <!-- Amendment 10: vibrato controls -->
+  <div id="vibrato-section">
+    <span class="section-label">Vibrato</span>
+
+    <div class="slider-row">
+      <span class="slider-end-label">Rate</span>
+      <input type="range" id="freq-slider" min="-0.3" max="1.3" step="0.01" value="0.7"
+             list="freq-marks-list">
+      <datalist id="freq-marks-list">
+        <option value="-0.3"></option>
+        <option value="0"></option>
+        <option value="0.7"></option>
+        <option value="1.3"></option>
+      </datalist>
+      <span id="freq-display">5.0 Hz</span>
+    </div>
+    <!-- guide marks for the frequency slider exponent positions -->
+    <div class="freq-marks">
+      <span>0.5 Hz</span><span>1 Hz</span><span>5 Hz</span><span>20 Hz</span>
+    </div>
+
+    <div class="slider-row">
+      <span class="slider-end-label">None</span>
+      <input type="range" id="depth-slider" min="0" max="1" step="0.01" value="0.2">
+      <span class="slider-end-label right">Deep</span>
+    </div>
+  </div>
+
+  <!-- Amendment 12: chorus controls -->
+  <div id="chorus-section">
+    <span class="section-label">Chorus</span>
+
+    <div class="slider-row">
+      <span class="slider-end-label">Thin</span>
+      <input type="range" id="chorus-depth-slider" min="0" max="1" step="0.01" value="0.4">
+      <span class="slider-end-label right">Rich</span>
+    </div>
+
+    <div class="slider-row">
+      <span class="slider-end-label">Dry</span>
+      <input type="range" id="chorus-wet-slider" min="0" max="1" step="0.01" value="0.3">
+      <span class="slider-end-label right">Wet</span>
+    </div>
+  </div>
+
+  <!-- Tone.js audio engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+  <!-- abcjs for ABC notation parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.2.2/abcjs-basic-min.js"></script>
+
+  <script>
+    'use strict';
+
+    // ── Web Audio guard ───────────────────────────────────────────────────────
+    if (typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined') {
+      document.getElementById('status').textContent =
+        'Web Audio not supported in this browser';
+    }
+
+    // ── Element refs ──────────────────────────────────────────────────────────
+    const statusEl      = document.getElementById('status');
+    const playPauseBtn  = document.getElementById('play-pause-btn');
+    const stopBtn       = document.getElementById('stop-btn');
+    const sendBackBtn   = document.getElementById('send-back-btn');
+    const wetSlider    = document.getElementById('wet-slider');
+    const decaySlider  = document.getElementById('decay-slider');
+    const decayDisplay = document.getElementById('decay-display');
+    const freqSlider        = document.getElementById('freq-slider');
+    const freqDisplay       = document.getElementById('freq-display');
+    const depthSlider       = document.getElementById('depth-slider');
+    const chorusDepthSlider = document.getElementById('chorus-depth-slider');
+    const chorusWetSlider   = document.getElementById('chorus-wet-slider');
+    const moduleLabel       = document.getElementById('module-label');
+
+    // ── Module state ──────────────────────────────────────────────────────────
+    let samplerReady  = false;
+    let abcReady      = false;
+    let playerState   = 'stopped'; // 'stopped' | 'playing' | 'paused' | 'finished'
+    let notePart      = null;
+    let noteEvents    = [];
+    let endTimeSecs   = 0;
+    // Amendment 6: text stored internally; no textarea in module
+    let storedAbcText = '';
+    // Amendment 21: loop state
+    let loopEnabled = true;
+    let loopGapSecs = 6;
+    let loopTimer   = null;
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    const setStatus = (msg) => { statusEl.textContent = msg; };
+
+    const updateControls = () => {
+      playPauseBtn.disabled    = !(samplerReady && abcReady);
+      stopBtn.disabled         = !(samplerReady && abcReady);
+      playPauseBtn.textContent = (playerState === 'playing') ? 'Pause' : 'Play';
+    };
+
+    // Post a message to the parent window.
+    // Origin is '*' during development.
+    // TODO: tighten to 'https://butterflydreaming.info' in production.
+    const postToParent = (message) => {
+      window.parent.postMessage(message, '*');
+    };
+
+    // ── Display helpers ───────────────────────────────────────────────────────
+    function formatDecaySecs(secs) {
+      if (secs < 1)  return `${secs.toFixed(2)}s`;
+      if (secs < 10) return `${secs.toFixed(1)}s`;
+      return `${Math.round(secs)}s`;
+    }
+
+    function formatFreqHz(hz) {
+      if (hz < 10) return `${hz.toFixed(1)} Hz`;
+      return `${Math.round(hz)} Hz`;
+    }
+
+    // ── Audio chain: Sampler → Chorus → Vibrato → Reverb → Destination ──────────
+    // Amendment 9: reverb; Amendment 10: vibrato; Amendment 12: chorus.
+    const reverb = new Tone.Reverb({ decay: 2.5 });
+    reverb.wet.value = 0.35; // Amendment 12: default values from Part A
+
+    const vibrato = new Tone.Vibrato({ frequency: 4, depth: 0, type: 'sine' });
+
+    const chorus = new Tone.Chorus({ frequency: 1.5, delayTime: 3.5, depth: 0.4, wet: 0.3 });
+    chorus.start(); // Tone.Chorus requires start() to run its internal LFO
+
+    const sampler = new Tone.Sampler({
+      urls: {
+        'F#2': 'bass_recorder_Fs2.mp3',
+        'C3':  'bass_recorder_C3.mp3',
+        'G#3': 'bass_recorder_Gs3.mp3',
+        'E4':  'bass_recorder_E4.mp3'
+      },
+      baseUrl: './bass-recorder/',
+      onerror: (err) => {
+        const msg = `Failed to load samples: ${err}`;
+        console.error(msg);
+        setStatus(msg);
+        postToParent({ type: 'BD_ERROR', payload: { message: msg } });
+      }
+    });
+
+    sampler.connect(chorus);
+    chorus.connect(vibrato);
+    vibrato.connect(reverb);
+    reverb.toDestination();
+
+    // Amendments 5, 9, 10: gate Play on samples, reverb IR, and vibrato ready.
+    Promise.all([Tone.loaded(), reverb.ready]).then(() => {
+      samplerReady = true;
+      setStatus(abcReady ? 'Ready — press Play' : 'Ready');
+      updateControls();
+    });
+
+    // ── Signal module loaded ──────────────────────────────────────────────────
+    postToParent({ type: 'BD_READY' });
+
+    // ── %%bd_ parameter parsing ───────────────────────────────────────────────
+    // Returns null for any value not found (caller uses defaults).
+    function parseBdParams(text) {
+      const wetMatch        = text.match(/^%%bd_reverb_wet\s+([\d.]+)/m);
+      const decayMatch      = text.match(/^%%bd_reverb_decay\s+([\d.]+)/m);
+      const freqMatch       = text.match(/^%%bd_vibrato_frequency\s+([\d.]+)/m);
+      const depthMatch      = text.match(/^%%bd_vibrato_depth\s+([\d.]+)/m);
+      const chorusWetMatch  = text.match(/^%%bd_chorus_wet\s+([\d.]+)/m);
+      const chorusDepthMatch = text.match(/^%%bd_chorus_depth\s+([\d.]+)/m);
+      const loopMatch       = text.match(/^%%bd_loop\s+(true|false)/m);
+      const loopGapMatch    = text.match(/^%%bd_loop_gap\s+([\d.]+)/m);
+      return {
+        wet:          wetMatch        ? parseFloat(wetMatch[1])        : null,
+        decay:        decayMatch      ? parseFloat(decayMatch[1])      : null,
+        vibratoFreq:  freqMatch       ? parseFloat(freqMatch[1])       : null,
+        vibratoDepth: depthMatch      ? parseFloat(depthMatch[1])      : null,
+        chorusWet:    chorusWetMatch  ? parseFloat(chorusWetMatch[1])  : null,
+        chorusDepth:  chorusDepthMatch ? parseFloat(chorusDepthMatch[1]) : null,
+        loopEnabled:  loopMatch       ? loopMatch[1] === 'true'        : null,
+        loopGap:      loopGapMatch    ? parseFloat(loopGapMatch[1])    : null
+      };
+    }
+
+    // ── %%bd_score block extraction (Amendment 20) ───────────────────────────
+    // Extracts the ABC content from inside a %%bd_score [...] %%bd_] block.
+    // Falls back to the full text if no such block is found.
+    function extractScore(text) {
+      const match = text.match(/^%%bd_score\s*\[\s*\n([\s\S]*?)^%%bd_\]$/m);
+      return match ? match[1] : text;
+    }
+
+    // ── %%bd_ parameter encoding ──────────────────────────────────────────────
+    // Replaces existing %%bd_ lines or inserts them before %%bd_score.
+    // decay is stored as actual seconds (not slider position).
+    // All parameters are written or updated on every Send Back.
+    function encodeBdParams(text, wet, decaySecs, vibratoFreq, vibratoDepth, chorusWet, chorusDepth, loopEnabledVal, loopGapVal) {
+      const wetLine         = `%%bd_reverb_wet ${wet.toFixed(2)}`;
+      const decayLine       = `%%bd_reverb_decay ${decaySecs.toFixed(3)}`;
+      const freqLine        = `%%bd_vibrato_frequency ${vibratoFreq.toFixed(3)}`;
+      const depthLine       = `%%bd_vibrato_depth ${vibratoDepth.toFixed(2)}`;
+      const chorusWetLine   = `%%bd_chorus_wet ${chorusWet.toFixed(2)}`;
+      const chorusDepthLine = `%%bd_chorus_depth ${chorusDepth.toFixed(2)}`;
+      const loopLine        = `%%bd_loop ${loopEnabledVal ? 'true' : 'false'}`;
+      const loopGapLine     = `%%bd_loop_gap ${Math.round(loopGapVal)}`;
+
+      // Replace any existing %%bd_ lines in place
+      let result = text
+        .replace(/^%%bd_reverb_wet\s+[\d.]+/m,        wetLine)
+        .replace(/^%%bd_reverb_decay\s+[\d.]+/m,      decayLine)
+        .replace(/^%%bd_vibrato_frequency\s+[\d.]+/m, freqLine)
+        .replace(/^%%bd_vibrato_depth\s+[\d.]+/m,     depthLine)
+        .replace(/^%%bd_chorus_wet\s+[\d.]+/m,        chorusWetLine)
+        .replace(/^%%bd_chorus_depth\s+[\d.]+/m,      chorusDepthLine)
+        .replace(/^%%bd_loop\s+(true|false)/m,         loopLine)
+        .replace(/^%%bd_loop_gap\s+[\d.]+/m,          loopGapLine);
+
+      // Collect any still-absent lines and insert before %%bd_score (or first |)
+      const missing = [];
+      if (!/^%%bd_reverb_wet/m.test(result))        missing.push(wetLine);
+      if (!/^%%bd_reverb_decay/m.test(result))      missing.push(decayLine);
+      if (!/^%%bd_vibrato_frequency/m.test(result)) missing.push(freqLine);
+      if (!/^%%bd_vibrato_depth/m.test(result))     missing.push(depthLine);
+      if (!/^%%bd_chorus_wet/m.test(result))        missing.push(chorusWetLine);
+      if (!/^%%bd_chorus_depth/m.test(result))      missing.push(chorusDepthLine);
+      if (!/^%%bd_loop\b/m.test(result))            missing.push(loopLine);
+      if (!/^%%bd_loop_gap\b/m.test(result))        missing.push(loopGapLine);
+
+      if (missing.length > 0) {
+        const lines = result.split('\n');
+        let insertIdx = lines.findIndex(l => /^%%bd_score/.test(l));
+        if (insertIdx === -1) insertIdx = lines.findIndex(l => l.includes('|'));
+        if (insertIdx === -1) insertIdx = lines.length;
+        lines.splice(insertIdx, 0, ...missing);
+        result = lines.join('\n');
+      }
+
+      return result;
+    }
+
+    // ── Apply %%bd_ params to UI + effects ───────────────────────────────────
+    // decay and vibratoFreq are in real units (seconds, Hz); log10 converts to
+    // slider position. Called on BD_INIT and when defaults are needed.
+    function applyBdParams(wet, decaySecs, vibratoFreq, vibratoDepth, chorusWet, chorusDepth, loopEnabledVal, loopGapVal) {
+      // Reverb
+      wetSlider.value          = wet;
+      reverb.wet.value         = wet;
+      decaySlider.value        = Math.log10(decaySecs);
+      decayDisplay.textContent = formatDecaySecs(decaySecs);
+      reverb.decay             = decaySecs;
+      reverb.generate(); // rebuild IR (async, fire-and-forget)
+
+      // Vibrato
+      freqSlider.value         = Math.log10(vibratoFreq);
+      freqDisplay.textContent  = formatFreqHz(vibratoFreq);
+      vibrato.frequency.value  = vibratoFreq;
+      depthSlider.value        = vibratoDepth;
+      vibrato.depth.value      = vibratoDepth;
+
+      // Chorus
+      chorusDepthSlider.value  = chorusDepth;
+      chorus.depth             = chorusDepth;
+      chorusWetSlider.value    = chorusWet;
+      chorus.wet.value         = chorusWet;
+
+      // Loop
+      loopEnabled = loopEnabledVal;
+      loopGapSecs = loopGapVal;
+    }
+
+    // ── Wet slider ────────────────────────────────────────────────────────────
+    wetSlider.addEventListener('input', () => {
+      reverb.wet.value = parseFloat(wetSlider.value);
+    });
+
+    // ── Decay slider ──────────────────────────────────────────────────────────
+    // Slider position x → actual decay = 10^x seconds.
+    // Debounced generate() to avoid rebuilding the IR on every pixel of drag.
+    let decayTimer = null;
+    decaySlider.addEventListener('input', () => {
+      const x = parseFloat(decaySlider.value);
+      const decaySecs = Math.pow(10, x);
+      decayDisplay.textContent = formatDecaySecs(decaySecs);
+      reverb.decay = decaySecs;
+      clearTimeout(decayTimer);
+      decayTimer = setTimeout(() => { reverb.generate(); }, 150);
+    });
+
+    // ── Vibrato sliders ───────────────────────────────────────────────────────
+    // Frequency: log scale — slider pos x → frequency = 10^x Hz.
+    freqSlider.addEventListener('input', () => {
+      const hz = Math.pow(10, parseFloat(freqSlider.value));
+      freqDisplay.textContent = formatFreqHz(hz);
+      vibrato.frequency.value = hz;
+    });
+
+    // Depth: linear 0–1, maps directly to vibrato.depth.value.
+    depthSlider.addEventListener('input', () => {
+      vibrato.depth.value = parseFloat(depthSlider.value);
+    });
+
+    // ── Chorus sliders ────────────────────────────────────────────────────────
+    chorusDepthSlider.addEventListener('input', () => {
+      chorus.depth = parseFloat(chorusDepthSlider.value);
+    });
+
+    chorusWetSlider.addEventListener('input', () => {
+      chorus.wet.value = parseFloat(chorusWetSlider.value);
+    });
+
+    // ── ABC pitch → Tone.js note string ──────────────────────────────────────
+    // abcjs diatonic integer: 0 = C in ABC default octave = C4 in Tone.js.
+    // Each step of 7 is one octave: pitch 7 = C5, pitch -7 = C3.
+    const DIATONIC = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+    const ACC_MAP  = { sharp: '#', flat: 'b', dblsharp: '##', dblflat: 'bb' };
+
+    function abcPitchToTone(abcPitch, accidental) {
+      const octave  = 4 + Math.floor(abcPitch / 7);
+      const noteIdx = ((abcPitch % 7) + 7) % 7;
+      const acc     = ACC_MAP[accidental] || '';
+      return `${DIATONIC[noteIdx]}${acc}${octave}`;
+    }
+
+    // ── Parse BPM from Q: field ───────────────────────────────────────────────
+    function parseBPM(abcText) {
+      const frac = abcText.match(/Q:\s*(\d+)\/(\d+)\s*=\s*(\d+)/);
+      if (frac) {
+        const [, a, b, n] = frac.map(Number);
+        return 4 * n * a / b;
+      }
+      const simple = abcText.match(/Q:\s*(\d+)/);
+      if (simple) return parseInt(simple[1], 10);
+      return 120;
+    }
+
+    // ── Extract notes from abcjs parseOnly output ─────────────────────────────
+    // Time offset is tracked here so all pitches in a chord share the same
+    // offset; t advances once per element, not once per pitch.
+    function extractNotes(parsed) {
+      const notes = [];
+      const tune = parsed && parsed[0];
+      if (!tune || !tune.lines) return notes;
+
+      let t = 0; // running offset in whole-note fractions
+
+      for (const line of tune.lines) {
+        if (!line.staff) continue;
+        for (const staff of line.staff) {
+          if (!staff.voices) continue;
+          for (const voice of staff.voices) {
+            for (const elem of voice) {
+              if (elem.el_type !== 'note') continue;
+              if (elem.rest) { t += elem.duration; continue; }
+              if (!elem.pitches || elem.pitches.length === 0) continue;
+
+              const elemTime = t; // captured once for all pitches in this chord
+              elem.pitches.forEach(p => {
+                notes.push({
+                  time:          elemTime,
+                  tonePitch:     abcPitchToTone(p.pitch, p.accidental),
+                  durationWhole: elem.duration
+                });
+              });
+              t += elem.duration; // advance once after the whole chord
+            }
+          }
+        }
+      }
+      return notes;
+    }
+
+    // ── Build timed event list ────────────────────────────────────────────────
+    function buildEvents(notes, bpm) {
+      const secondsPerWhole = 240 / bpm;
+      const events = [];
+      let endTime = 0;
+      for (const n of notes) {
+        const timeSecs = n.time * secondsPerWhole;
+        const durSecs  = n.durationWhole * secondsPerWhole;
+        events.push({ time: timeSecs, note: n.tonePitch, duration: durSecs });
+        if (timeSecs + durSecs > endTime) endTime = timeSecs + durSecs;
+      }
+      return { events, endTime };
+    }
+
+    // ── Playback scheduling ───────────────────────────────────────────────────
+    function teardownPlayback() {
+      clearTimeout(loopTimer);
+      loopTimer = null;
+      if (notePart) { notePart.stop(0); notePart.dispose(); notePart = null; }
+      Tone.Transport.stop();
+      Tone.Transport.cancel(0);
+    }
+
+    function startPlayback() {
+      teardownPlayback();
+
+      notePart = new Tone.Part((time, ev) => {
+        sampler.triggerAttackRelease(ev.note, ev.duration, time);
+      }, noteEvents);
+
+      notePart.start(0);
+
+      Tone.Transport.scheduleOnce(() => {
+        if (loopEnabled) {
+          setStatus('Looping\u2026');
+          loopTimer = setTimeout(() => { startPlayback(); }, loopGapSecs * 1000);
+        } else {
+          playerState = 'finished';
+          setStatus('Finished');
+          updateControls();
+        }
+      }, endTimeSecs + 0.05);
+
+      Tone.Transport.start();
+      playerState = 'playing';
+      setStatus('Playing');
+      updateControls();
+    }
+
+    // ── Play / Pause toggle (Amendments 2, 7) ─────────────────────────────────
+    playPauseBtn.addEventListener('click', async () => {
+      await Tone.start();
+      if (playerState === 'playing') {
+        Tone.Transport.pause();
+        playerState = 'paused';
+        setStatus('Paused');
+        updateControls();
+      } else if (playerState === 'paused') {
+        Tone.Transport.start();
+        playerState = 'playing';
+        setStatus('Playing');
+        updateControls();
+      } else {
+        startPlayback();
+      }
+    });
+
+    // ── Stop ──────────────────────────────────────────────────────────────────
+    stopBtn.addEventListener('click', () => {
+      teardownPlayback();
+      playerState = 'stopped';
+      setStatus('Stopped');
+      updateControls();
+    });
+
+    // ── Send Back ─────────────────────────────────────────────────────────────
+    // Reads current slider values, encodes them as %%bd_ lines, and sends
+    // the complete updated ABC text back to the parent via BD_UPDATE.
+    sendBackBtn.addEventListener('click', () => {
+      const wet          = parseFloat(wetSlider.value);
+      const decaySecs    = Math.pow(10, parseFloat(decaySlider.value));
+      const vibratoFreq  = Math.pow(10, parseFloat(freqSlider.value));
+      const vibratoDepth = parseFloat(depthSlider.value);
+      const chorusWet    = parseFloat(chorusWetSlider.value);
+      const chorusDepth  = parseFloat(chorusDepthSlider.value);
+      const updatedText  = encodeBdParams(storedAbcText, wet, decaySecs, vibratoFreq, vibratoDepth, chorusWet, chorusDepth, loopEnabled, loopGapSecs);
+      storedAbcText = updatedText; // keep in sync for subsequent Send Backs
+      postToParent({ type: 'BD_UPDATE', payload: { text: updatedText } });
+    });
+
+    // ── ABC parsing ───────────────────────────────────────────────────────────
+    function processABC(text) {
+      const abcText = extractScore(text);
+      let parsed;
+      try {
+        parsed = ABCJS.parseOnly(abcText);
+      } catch (err) {
+        const msg = 'Failed to parse ABC notation';
+        setStatus(msg);
+        postToParent({ type: 'BD_ERROR', payload: { message: msg } });
+        return;
+      }
+
+      const notes = extractNotes(parsed);
+      if (notes.length === 0) {
+        const msg = 'No playable notes found';
+        setStatus(msg);
+        postToParent({ type: 'BD_ERROR', payload: { message: msg } });
+        abcReady = false;
+        updateControls();
+        return;
+      }
+
+      const bpm = parseBPM(abcText);
+      Tone.Transport.bpm.value = bpm;
+
+      const built = buildEvents(notes, bpm);
+      noteEvents  = built.events;
+      endTimeSecs = built.endTime;
+
+      teardownPlayback();
+      playerState = 'stopped';
+      abcReady = true;
+      setStatus(samplerReady ? 'Ready — press Play' : 'Loading samples…');
+      updateControls();
+    }
+
+    // ── postMessage listener ──────────────────────────────────────────────────
+    window.addEventListener('message', (event) => {
+      // Origin is '*' during development.
+      // TODO: tighten to 'https://butterflydreaming.info' in production.
+      try {
+        const { type, payload } = event.data;
+
+        switch (type) {
+
+          case 'BD_INIT': {
+            storedAbcText = payload.text;
+
+            // Amendment 17: update module name label from %%bd_module field.
+            const moduleMatch = payload.text.match(/^%%bd_module\s+(\S+)/m);
+            moduleLabel.textContent = `Module: ${moduleMatch ? moduleMatch[1] : 'music_module.html'}`;
+
+
+            // Parse all %%bd_ params and apply to sliders + effects + loop state.
+            // If a field is absent, the current value is kept.
+            const { wet, decay, vibratoFreq, vibratoDepth, chorusWet, chorusDepth, loopEnabled: le, loopGap: lg } = parseBdParams(payload.text);
+            applyBdParams(
+              wet          !== null ? wet          : parseFloat(wetSlider.value),
+              decay        !== null ? decay        : Math.pow(10, parseFloat(decaySlider.value)),
+              vibratoFreq  !== null ? vibratoFreq  : Math.pow(10, parseFloat(freqSlider.value)),
+              vibratoDepth !== null ? vibratoDepth : parseFloat(depthSlider.value),
+              chorusWet    !== null ? chorusWet    : parseFloat(chorusWetSlider.value),
+              chorusDepth  !== null ? chorusDepth  : parseFloat(chorusDepthSlider.value),
+              le           !== null ? le           : loopEnabled,
+              lg           !== null ? lg           : loopGapSecs
+            );
+
+            processABC(payload.text);
+            break;
+          }
+
+          case 'BD_STOP':
+            teardownPlayback();
+            playerState = 'stopped';
+            setStatus('Stopped');
+            updateControls();
+            break;
+
+          default:
+            break;
+        }
+      } catch (err) {
+        console.error('music_module: error handling postMessage', err);
+      }
+    });
+  </script>
+
+</body>
+</html>
