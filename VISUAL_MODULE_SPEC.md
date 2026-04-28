@@ -820,3 +820,25 @@ should be only as wide as necessary to display their content.
 Display the current numeric value of each slider in small font
 immediately adjacent to the slider. The value should update in real
 time as the slider is moved.
+
+### Amendment 7 — Updated Default Grammar
+
+Replace the current default grammar with Test 2 which produces a
+closer approximation to authentic kolam with confirmed path closure:
+
+%%bd_module visual_module.html
+%%bd_symmetry 8
+%%bd_depth 3
+%%bd_step 40
+%%bd_angle 45
+%%bd_stroke angle
+%%bd_saturation 100
+%%bd_lightness 65
+%%bd_background #0a0a0f
+%%bd_weight 1.5
+%%bd_score [
+axiom: F+F+F+F+F+F+F+F
+F: F+F-F-F+F+F+F-F
+%%bd_]
+
+This supersedes the previous default grammar in index.html.
