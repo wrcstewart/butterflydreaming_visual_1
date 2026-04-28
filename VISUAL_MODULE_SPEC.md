@@ -616,3 +616,207 @@ With parameters: `%%bd_angle 45`, `%%bd_depth 4`, `%%bd_symmetry 8`.
 
 This grammar ensures that the rewritten string contains turn symbols and produces
 an interlocking pattern suitable for demonstrating the rendering pipeline.
+
+### Amendment 3 — Angle-Tracked Hue Colouring (Stage 1)
+
+Replace the fixed stroke colour with dynamic hue colouring that tracks the
+cumulative turtle heading angle. This gives each direction of travel a distinct
+colour, making the rotational structure of the kolam directly visible through
+colour as well as geometry.
+
+#### Colouring Rule
+At each F move, set the stroke colour using the current cumulative turtle
+heading angle:
+
+  hsl(angle mod 360, 35%, 65%)
+
+where angle is the current turtle heading in degrees at the moment the F
+move begins. S=35 and L=65 are hardcoded in this stage — they will be
+exposed as directives and sliders in Amendment 4.
+
+#### Implementation
+In the turtle interpreter, before each F move:
+
+```javascript
+const hue = ((state.angle % 360) + 360) % 360
+ctx.strokeStyle = `hsl(${hue}, 35%, 65%)`
+```
+
+The double modulo ensures the hue is always positive even if the cumulative
+angle has gone negative through repeated right turns.
+
+#### Signal Directive
+Update %%bd_stroke in the default text in index.html from #4a9b8e to the
+keyword "angle" as a signal that angle-tracking is active:
+
+%%bd_stroke angle
+
+The module checks if the value of %%bd_stroke is "angle" and activates
+angle-tracked colouring. Any other value is treated as a fixed hex colour
+as before. This preserves backward compatibility — a module receiving a
+node with a hex stroke colour renders it as a fixed colour.
+
+#### Default Text Update
+The default text in index.html is updated to include the stroke signal:
+
+%%bd_module visual_module.html
+%%bd_symmetry 8
+%%bd_depth 4
+%%bd_step 40
+%%bd_angle 45
+%%bd_stroke angle
+%%bd_background #0a0a0f
+%%bd_weight 1.5
+%%bd_score [
+axiom: F+F+F+F+F+F+F+F
+F: F-F+F+F-F
+%%bd_]
+
+#### Stage 2
+Exposing S and L as %%bd_saturation and %%bd_lightness directives with
+corresponding sliders is deferred to Amendment 4.
+
+### Amendment 3a — Hardcoded S and L Values for Stage 1
+
+Amendment 3 specifies S=35 and L=65 as the hardcoded values for Stage 1.
+These are superseded by this amendment for development purposes.
+
+During Stage 1 use:
+  S = 100  (fully saturated — maximum colour visibility for development)
+  L = 65   (mid-high lightness — visible against dark background)
+
+L may be adjusted during testing if colours are not sufficiently visible
+against the %%bd_background of #0a0a0f. The final values for S and L will
+be determined by visual inspection before Amendment 4 exposes them as
+directives and sliders.
+
+### Amendment 4 — Sliders for All Rendering Parameters
+
+Add sliders to visual_module.html for all rendering parameters. Sliders
+are set from incoming %%bd_ directives on BD_INIT and their current values
+are written back into the node text via BD_UPDATE when Send Back is pressed.
+This follows the same pattern as the music module.
+
+#### Sliders to Add
+
+**Symmetry**
+- Integer steps: 1, 2, 3, 4, 6, 8, 10, 12, 16
+- Implemented as a dropdown select rather than a slider
+- Default: 8
+- Directive: %%bd_symmetry
+
+**Depth**
+- Integer slider range 1 to 6 (capped at 6 per spec)
+- Default: 4
+- Directive: %%bd_depth
+
+**Step**
+- Linear slider range 10 to 200
+- Default: 40
+- Directive: %%bd_step
+
+**Angle**
+- Linear slider range 5 to 90 degrees
+- Default: 45
+- Directive: %%bd_angle
+
+**Line Weight**
+- Linear slider range 0.5 to 5
+- Default: 1.5
+- Directive: %%bd_weight
+
+**Saturation (S)**
+- Linear slider range 0 to 100
+- Left label: "Grey"  Right label: "Vivid"
+- Default: 100
+- Directive: %%bd_saturation
+
+**Lightness (L)**
+- Linear slider range 0 to 100
+- Left label: "Dark"  Right label: "Light"
+- Default: 65
+- Directive: %%bd_lightness
+
+#### Inbound — index.html to Module
+When BD_INIT is received, the module sets all sliders to match the
+corresponding %%bd_ directive values. If a directive is absent the
+slider stays at its default value.
+
+#### Outbound — Module to index.html
+When Send Back is pressed, the module reads all current slider values,
+updates or inserts the corresponding %%bd_ directives in the node text,
+and posts BD_UPDATE to the parent with the complete updated text.
+
+The %%bd_saturation and %%bd_lightness directives are added to the
+default text in index.html:
+
+%%bd_module visual_module.html
+%%bd_symmetry 8
+%%bd_depth 4
+%%bd_step 40
+%%bd_angle 45
+%%bd_stroke angle
+%%bd_saturation 100
+%%bd_lightness 65
+%%bd_background #0a0a0f
+%%bd_weight 1.5
+%%bd_score [
+axiom: F+F+F+F+F+F+F+F
+F: F-F+F+F-F
+%%bd_]
+
+#### Re-render on Slider Change
+Each slider change should immediately trigger a re-render of the canvas
+so the user sees the effect in real time without needing to press
+Send to Player.
+
+#### Layout
+Add a controls panel below the canvas in visual_module.html. Style
+consistently with the music module — dark background, teal accents,
+subtle labels. Keep the canvas as the dominant visual element.
+
+### Amendment 5 — Player Height, Slider Labels and Depth Cap
+
+#### Part A — Player Height
+Double the vertical height of the visual_module.html player window to
+allow all sliders and the canvas to be visible simultaneously without
+scrolling.
+
+#### Part B — Slider Labels
+Remove all secondary lowercase labels from the sliders. The main
+capitalised label above each slider is sufficient. This applies to
+labels such as "Grey", "Vivid", "Dark", "Light" and any other
+secondary descriptive labels currently shown alongside slider controls.
+
+#### Part C — Depth Cap
+Increase the maximum depth cap from 6 to 8. Update the depth slider
+range from 1-6 to 1-8. Update all references to the cap value in the
+code accordingly.
+
+### Amendment 5a — Correction to Player Height
+
+Amendment 5 Part A is clarified. The canvas must remain square at its
+current size. The height increase applies to the overall player window
+height only — specifically the containing page or scrollable area of
+visual_module.html — to accommodate the sliders below the canvas without
+scrolling. Do not change the canvas dimensions.
+
+### Amendment 5b — Canvas Size and Layout Correction
+
+The canvas must be square and fill the full width of the module area.
+All slider controls are placed below the canvas in the remaining vertical
+space. The canvas size should be calculated from the available width of
+the module container, not set to a fixed pixel value.
+### Amendment 6 — Dropdown and Slider Display Improvements
+
+#### Part A — Depth Dropdown
+Change the depth control from a slider to a dropdown select populated
+with integer values 1 to 10. Remove the depth cap of 8 from Amendment 5
+Part C — the dropdown naturally limits the range. Place the depth
+dropdown on the same line as the symmetry dropdown. Both dropdowns
+should be only as wide as necessary to display their content.
+
+#### Part B — Slider Values
+Display the current numeric value of each slider in small font
+immediately adjacent to the slider. The value should update in real
+time as the slider is moved.

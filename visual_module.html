@@ -79,6 +79,11 @@
       align-items: center;
     }
 
+    .control-row.double {
+      grid-template-columns: 1fr auto 1fr auto;
+      gap: 0.5rem 0.75rem;
+    }
+
     .control-row label {
       font-size: 0.8rem;
       text-transform: uppercase;
@@ -86,10 +91,28 @@
       color: #4a9b8e;
     }
 
-    .control-row select,
+    .control-row select {
+      width: auto;
+      min-width: 60px;
+      accent-color: #4a9b8e;
+    }
+
     .control-row input[type='range'] {
       width: 100%;
       accent-color: #4a9b8e;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .slider-value {
+      font-size: 0.7rem;
+      color: #9e9e90;
+      min-width: 30px;
+      text-align: right;
     }
 
     canvas {
@@ -112,7 +135,7 @@
   </div>
 
   <div class="control-panel">
-    <div class="control-row">
+    <div class="control-row double">
       <label for="symmetry-select">Symmetry</label>
       <select id="symmetry-select">
         <option value="1">1</option>
@@ -125,34 +148,59 @@
         <option value="12">12</option>
         <option value="16">16</option>
       </select>
+      <label for="depth-select">Depth</label>
+      <select id="depth-select">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+      </select>
     </div>
 
     <div class="control-row">
-      <label for="depth-slider">Depth</label>
-      <input id="depth-slider" type="range" min="1" max="8" step="1" value="4">
-    <div class="control-row">
       <label for="step-slider">Step</label>
-      <input id="step-slider" type="range" min="10" max="200" step="1" value="40">
+      <div class="slider-container">
+        <input id="step-slider" type="range" min="10" max="200" step="1" value="40">
+        <span id="step-value" class="slider-value">40</span>
+      </div>
     </div>
 
     <div class="control-row">
       <label for="angle-slider">Angle</label>
-      <input id="angle-slider" type="range" min="5" max="90" step="1" value="45">
+      <div class="slider-container">
+        <input id="angle-slider" type="range" min="5" max="90" step="1" value="45">
+        <span id="angle-value" class="slider-value">45</span>
+      </div>
     </div>
 
     <div class="control-row">
       <label for="weight-slider">Line Weight</label>
-      <input id="weight-slider" type="range" min="0.5" max="5" step="0.1" value="1.5">
+      <div class="slider-container">
+        <input id="weight-slider" type="range" min="0.5" max="5" step="0.1" value="1.5">
+        <span id="weight-value" class="slider-value">1.5</span>
+      </div>
     </div>
 
     <div class="control-row">
       <label for="saturation-slider">Saturation</label>
-      <input id="saturation-slider" type="range" min="0" max="100" step="1" value="100">
+      <div class="slider-container">
+        <input id="saturation-slider" type="range" min="0" max="100" step="1" value="100">
+        <span id="saturation-value" class="slider-value">100</span>
+      </div>
     </div>
 
     <div class="control-row">
       <label for="lightness-slider">Lightness</label>
-      <input id="lightness-slider" type="range" min="0" max="100" step="1" value="65">
+      <div class="slider-container">
+        <input id="lightness-slider" type="range" min="0" max="100" step="1" value="65">
+        <span id="lightness-value" class="slider-value">65</span>
+      </div>
     </div>
 
     <button id="send-back-btn">Send Back</button>
@@ -167,12 +215,17 @@
     // ── Element refs ──────────────────────────────────────────────────────────
     const statusEl       = document.getElementById('status');
     const symmetrySelect = document.getElementById('symmetry-select');
-    const depthSlider    = document.getElementById('depth-slider');
+    const depthSelect    = document.getElementById('depth-select');
     const stepSlider     = document.getElementById('step-slider');
     const angleSlider    = document.getElementById('angle-slider');
     const weightSlider   = document.getElementById('weight-slider');
     const saturationSlider = document.getElementById('saturation-slider');
     const lightnessSlider  = document.getElementById('lightness-slider');
+    const stepValue      = document.getElementById('step-value');
+    const angleValue     = document.getElementById('angle-value');
+    const weightValue    = document.getElementById('weight-value');
+    const saturationValue = document.getElementById('saturation-value');
+    const lightnessValue  = document.getElementById('lightness-value');
     const sendBackBtn    = document.getElementById('send-back-btn');
     const canvas         = document.getElementById('kolam-canvas');
     const ctx            = canvas.getContext('2d');
@@ -273,12 +326,24 @@
       symmetrySelect.value = [1, 2, 3, 4, 6, 8, 10, 12, 16].includes(symmetryValue)
         ? String(symmetryValue)
         : '8';
-      depthSlider.value = String(Math.min(Math.max(safeParseInt(directives.depth, 4), 1), 8));
+      const depthValue = Math.min(Math.max(safeParseInt(directives.depth, 4), 1), 10);
+      depthSelect.value = String(depthValue);
       stepSlider.value = String(Math.min(Math.max(safeParseNumber(directives.step, 40), 10), 200));
       angleSlider.value = String(Math.min(Math.max(safeParseNumber(directives.angle, 45), 5), 90));
       weightSlider.value = String(Math.min(Math.max(safeParseNumber(directives.weight, 1.5), 0.5), 5));
       saturationSlider.value = String(Math.min(Math.max(safeParseNumber(directives.saturation, 100), 0), 100));
       lightnessSlider.value = String(Math.min(Math.max(safeParseNumber(directives.lightness, 65), 0), 100));
+
+      // Update value displays
+      updateValueDisplays();
+    }
+
+    function updateValueDisplays() {
+      stepValue.textContent = stepSlider.value;
+      angleValue.textContent = angleSlider.value;
+      weightValue.textContent = weightSlider.value;
+      saturationValue.textContent = saturationSlider.value;
+      lightnessValue.textContent = lightnessSlider.value;
     }
 
     function setDirectiveValue(nodeText, name, value) {
@@ -304,7 +369,7 @@
       let text = nodeText;
       const controlValues = {
         symmetry: symmetrySelect.value,
-        depth: depthSlider.value,
+        depth: depthSelect.value,
         step: stepSlider.value,
         angle: angleSlider.value,
         weight: weightSlider.value,
@@ -318,6 +383,7 @@
     }
 
     function handleControlChange() {
+      updateValueDisplays();
       if (!storedText) return;
       const updatedText = applyControlDirectives(storedText);
       render(updatedText);
@@ -325,7 +391,7 @@
 
     const controlInputs = [
       symmetrySelect,
-      depthSlider,
+      depthSelect,
       stepSlider,
       angleSlider,
       weightSlider,
