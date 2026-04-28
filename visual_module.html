@@ -20,7 +20,7 @@
       flex-direction: column;
       gap: 1rem;
       padding: 1.4rem;
-      min-height: 100vh;
+      min-height: 1200px;
     }
 
     #status {
@@ -60,15 +60,46 @@
     .canvas-wrapper {
       display: flex;
       justify-content: center;
-      flex: 1;
+      width: 100%;
+    }
+
+    .control-panel {
+      display: grid;
+      gap: 1rem;
+      background: rgba(15, 15, 24, 0.75);
+      border: 1px solid rgba(74, 155, 142, 0.2);
+      padding: 1rem;
+      border-radius: 0.5rem;
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .control-row label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #4a9b8e;
+    }
+
+    .control-row select,
+    .control-row input[type='range'] {
+      width: 100%;
+      accent-color: #4a9b8e;
     }
 
     canvas {
       border: 1px solid #4a9b8e;
       border-opacity: 0.3;
       display: block;
+      width: 100%;
+      aspect-ratio: 1 / 1;
       max-width: 100%;
-      max-height: 100%;
+      height: auto;
     }
   </style>
 </head>
@@ -76,12 +107,55 @@
 
   <div id="status">Ready</div>
 
-  <div class="controls">
-    <button id="send-back-btn">Send Back</button>
+  <div class="canvas-wrapper">
+    <canvas id="kolam-canvas"></canvas>
   </div>
 
-  <div class="canvas-wrapper">
-    <canvas id="kolam-canvas" width="560" height="560"></canvas>
+  <div class="control-panel">
+    <div class="control-row">
+      <label for="symmetry-select">Symmetry</label>
+      <select id="symmetry-select">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="6">6</option>
+        <option value="8">8</option>
+        <option value="10">10</option>
+        <option value="12">12</option>
+        <option value="16">16</option>
+      </select>
+    </div>
+
+    <div class="control-row">
+      <label for="depth-slider">Depth</label>
+      <input id="depth-slider" type="range" min="1" max="8" step="1" value="4">
+    <div class="control-row">
+      <label for="step-slider">Step</label>
+      <input id="step-slider" type="range" min="10" max="200" step="1" value="40">
+    </div>
+
+    <div class="control-row">
+      <label for="angle-slider">Angle</label>
+      <input id="angle-slider" type="range" min="5" max="90" step="1" value="45">
+    </div>
+
+    <div class="control-row">
+      <label for="weight-slider">Line Weight</label>
+      <input id="weight-slider" type="range" min="0.5" max="5" step="0.1" value="1.5">
+    </div>
+
+    <div class="control-row">
+      <label for="saturation-slider">Saturation</label>
+      <input id="saturation-slider" type="range" min="0" max="100" step="1" value="100">
+    </div>
+
+    <div class="control-row">
+      <label for="lightness-slider">Lightness</label>
+      <input id="lightness-slider" type="range" min="0" max="100" step="1" value="65">
+    </div>
+
+    <button id="send-back-btn">Send Back</button>
   </div>
 
   <!-- lindenmayer library for L-system rewriting -->
@@ -92,9 +166,26 @@
 
     // ── Element refs ──────────────────────────────────────────────────────────
     const statusEl       = document.getElementById('status');
+    const symmetrySelect = document.getElementById('symmetry-select');
+    const depthSlider    = document.getElementById('depth-slider');
+    const stepSlider     = document.getElementById('step-slider');
+    const angleSlider    = document.getElementById('angle-slider');
+    const weightSlider   = document.getElementById('weight-slider');
+    const saturationSlider = document.getElementById('saturation-slider');
+    const lightnessSlider  = document.getElementById('lightness-slider');
     const sendBackBtn    = document.getElementById('send-back-btn');
     const canvas         = document.getElementById('kolam-canvas');
     const ctx            = canvas.getContext('2d');
+    const canvasWrapper  = document.querySelector('.canvas-wrapper');
+
+    function updateCanvasSize() {
+      const width = canvasWrapper.clientWidth;
+      const size = Math.floor(width);
+      if (size > 0) {
+        canvas.width = size;
+        canvas.height = size;
+      }
+    }
 
     // ── Module state ──────────────────────────────────────────────────────────
     let storedText = ''; // full node text, saved for Send Back
@@ -166,6 +257,86 @@
       return result;
     }
 
+    function safeParseNumber(value, fallback) {
+      const n = parseFloat(value);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function safeParseInt(value, fallback) {
+      const n = parseInt(value, 10);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function setControlValues(directives) {
+      if (!symmetrySelect) return;
+      const symmetryValue = safeParseInt(directives.symmetry, 8);
+      symmetrySelect.value = [1, 2, 3, 4, 6, 8, 10, 12, 16].includes(symmetryValue)
+        ? String(symmetryValue)
+        : '8';
+      depthSlider.value = String(Math.min(Math.max(safeParseInt(directives.depth, 4), 1), 8));
+      stepSlider.value = String(Math.min(Math.max(safeParseNumber(directives.step, 40), 10), 200));
+      angleSlider.value = String(Math.min(Math.max(safeParseNumber(directives.angle, 45), 5), 90));
+      weightSlider.value = String(Math.min(Math.max(safeParseNumber(directives.weight, 1.5), 0.5), 5));
+      saturationSlider.value = String(Math.min(Math.max(safeParseNumber(directives.saturation, 100), 0), 100));
+      lightnessSlider.value = String(Math.min(Math.max(safeParseNumber(directives.lightness, 65), 0), 100));
+    }
+
+    function setDirectiveValue(nodeText, name, value) {
+      const lines = nodeText.split('\n');
+      const directiveName = `%%bd_${name}`;
+      let replaced = false;
+      const updated = lines.map((line) => {
+        if (line.startsWith(`${directiveName} `)) {
+          replaced = true;
+          return `${directiveName} ${value}`;
+        }
+        return line;
+      });
+      if (!replaced) {
+        const insertAt = updated.findIndex((line) => line.trim() === '%%bd_score [');
+        const index = insertAt === -1 ? updated.length : insertAt;
+        updated.splice(index, 0, `${directiveName} ${value}`);
+      }
+      return updated.join('\n');
+    }
+
+    function applyControlDirectives(nodeText) {
+      let text = nodeText;
+      const controlValues = {
+        symmetry: symmetrySelect.value,
+        depth: depthSlider.value,
+        step: stepSlider.value,
+        angle: angleSlider.value,
+        weight: weightSlider.value,
+        saturation: saturationSlider.value,
+        lightness: lightnessSlider.value
+      };
+      for (const [name, value] of Object.entries(controlValues)) {
+        text = setDirectiveValue(text, name, value);
+      }
+      return text;
+    }
+
+    function handleControlChange() {
+      if (!storedText) return;
+      const updatedText = applyControlDirectives(storedText);
+      render(updatedText);
+    }
+
+    const controlInputs = [
+      symmetrySelect,
+      depthSlider,
+      stepSlider,
+      angleSlider,
+      weightSlider,
+      saturationSlider,
+      lightnessSlider
+    ];
+
+    controlInputs.forEach((input) => {
+      input.addEventListener('input', handleControlChange);
+    });
+
     // ── Turtle State ──────────────────────────────────────────────────────────
     function createTurtleState(x, y) {
       return {
@@ -224,7 +395,7 @@
             ctx.quadraticCurveTo(cpx, cpy, nextX, nextY);
             if (angleTracked) {
               const hue = ((state.angle % 360) + 360) % 360;
-              ctx.strokeStyle = `hsl(${hue}, 100%, 65%)`;
+              ctx.strokeStyle = `hsl(${hue}, ${params.saturation}%, ${params.lightness}%)`;
             } else {
               ctx.strokeStyle = baseStroke;
             }
@@ -331,27 +502,30 @@
 
         // Apply defaults for any missing rendering parameters
         const params = {
-          symmetry:  parseInt(directives.symmetry, 10)  || 8,
-          depth:     parseInt(directives.depth, 10)     || 4,
-          step:      parseFloat(directives.step)        || 40,
-          angle:     parseFloat(directives.angle)       || 90,
-          stroke:    directives.stroke                  || '#4a9b8e',
+          symmetry:   safeParseInt(directives.symmetry, 8),
+          depth:      Math.min(Math.max(safeParseInt(directives.depth, 4), 1), 8),
+          step:       Math.min(Math.max(safeParseNumber(directives.step, 40), 10), 200),
+          angle:      Math.min(Math.max(safeParseNumber(directives.angle, 45), 5), 90),
+          stroke:     directives.stroke                  || '#4a9b8e',
           background: directives.background             || '#0a0a0f',
-          weight:    parseFloat(directives.weight)      || 1.5
+          weight:     Math.min(Math.max(safeParseNumber(directives.weight, 1.5), 0.5), 5),
+          saturation: Math.min(Math.max(safeParseNumber(directives.saturation, 100), 0), 100),
+          lightness:  Math.min(Math.max(safeParseNumber(directives.lightness, 65), 0), 100)
         };
 
-        // Cap depth at 6
-        if (params.depth > 6) {
-          params.depth = 6;
-          setStatus('Rendering… (depth capped at 6)');
+        // Cap depth at 8
+        if (params.depth > 8) {
+          params.depth = 8;
+          setStatus('Rendering… (depth capped at 8)');
         }
 
+        updateCanvasSize();
         // Clear canvas with background
         ctx.fillStyle = params.background;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Add subtle border
-        ctx.strokeStyle = params.stroke;
+        ctx.strokeStyle = '#4a9b8e';
         ctx.globalAlpha = 0.3;
         ctx.lineWidth = 1;
         ctx.strokeRect(0, 0, canvas.width, canvas.height);
@@ -372,6 +546,8 @@
         // Compute depth-scaled step size so the path stays within canvas bounds.
         const effectiveStep = params.step / Math.pow(3, Math.max(0, params.depth - 1));
         params.effectiveStep = effectiveStep;
+
+        setControlValues(directives);
 
         const offscreen = document.createElement('canvas');
         offscreen.width = canvas.width;
@@ -402,6 +578,13 @@
         console.error('render error:', err);
       }
     }
+
+    window.addEventListener('resize', () => {
+      updateCanvasSize();
+      if (storedText) {
+        render(storedText);
+      }
+    });
 
     // ── Message Handlers ──────────────────────────────────────────────────────
     window.addEventListener('message', (event) => {
