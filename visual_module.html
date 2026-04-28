@@ -155,11 +155,6 @@
         <option value="3">3</option>
         <option value="4">4</option>
         <option value="5">5</option>
-        <option value="6">6</option>
-        <option value="7">7</option>
-        <option value="8">8</option>
-        <option value="9">9</option>
-        <option value="10">10</option>
       </select>
     </div>
 
@@ -326,7 +321,7 @@
       symmetrySelect.value = [1, 2, 3, 4, 6, 8, 10, 12, 16].includes(symmetryValue)
         ? String(symmetryValue)
         : '8';
-      const depthValue = Math.min(Math.max(safeParseInt(directives.depth, 4), 1), 10);
+      const depthValue = Math.min(Math.max(safeParseInt(directives.depth, 4), 1), 5);
       depthSelect.value = String(depthValue);
       stepSlider.value = String(Math.min(Math.max(safeParseNumber(directives.step, 40), 10), 200));
       angleSlider.value = String(Math.min(Math.max(safeParseNumber(directives.angle, 45), 5), 90));
@@ -569,7 +564,7 @@
         // Apply defaults for any missing rendering parameters
         const params = {
           symmetry:   safeParseInt(directives.symmetry, 8),
-          depth:      Math.min(Math.max(safeParseInt(directives.depth, 4), 1), 8),
+          depth:      Math.min(Math.max(safeParseInt(directives.depth, 4), 1), 5),
           step:       Math.min(Math.max(safeParseNumber(directives.step, 40), 10), 200),
           angle:      Math.min(Math.max(safeParseNumber(directives.angle, 45), 5), 90),
           stroke:     directives.stroke                  || '#4a9b8e',
@@ -579,10 +574,10 @@
           lightness:  Math.min(Math.max(safeParseNumber(directives.lightness, 65), 0), 100)
         };
 
-        // Cap depth at 8
-        if (params.depth > 8) {
-          params.depth = 8;
-          setStatus('Rendering… (depth capped at 8)');
+        // Cap depth at 5
+        if (params.depth > 5) {
+          params.depth = 5;
+          setStatus('Rendering… (depth capped at 5)');
         }
 
         updateCanvasSize();

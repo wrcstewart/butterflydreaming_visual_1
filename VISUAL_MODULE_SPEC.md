@@ -842,3 +842,10 @@ F: F+F-F-F+F+F+F-F
 %%bd_]
 
 This supersedes the previous default grammar in index.html.
+
+### Amendment 8 — Depth Cap at 5
+
+Cap the maximum depth at 5 for the current grammar which expands
+significantly faster than the previous default. Update the depth
+dropdown range from 1-10 to 1-5. This supersedes the depth range
+specified in Amendment 6 Part A.
