@@ -175,6 +175,14 @@
     </div>
 
     <div class="control-row">
+      <label for="angle-minutes-slider">Angle Fine</label>
+      <div class="slider-container">
+        <input id="angle-minutes-slider" type="range" min="0" max="59" step="1" value="0">
+        <span id="angle-minutes-value" class="slider-value">0</span>
+      </div>
+    </div>
+
+    <div class="control-row">
       <label for="weight-slider">Line Weight</label>
       <div class="slider-container">
         <input id="weight-slider" type="range" min="0.5" max="5" step="0.1" value="1.5">
@@ -213,11 +221,13 @@
     const depthSelect    = document.getElementById('depth-select');
     const stepSlider     = document.getElementById('step-slider');
     const angleSlider    = document.getElementById('angle-slider');
+    const angleMinutesSlider = document.getElementById('angle-minutes-slider');
     const weightSlider   = document.getElementById('weight-slider');
     const saturationSlider = document.getElementById('saturation-slider');
     const lightnessSlider  = document.getElementById('lightness-slider');
     const stepValue      = document.getElementById('step-value');
     const angleValue     = document.getElementById('angle-value');
+    const angleMinutesValue = document.getElementById('angle-minutes-value');
     const weightValue    = document.getElementById('weight-value');
     const saturationValue = document.getElementById('saturation-value');
     const lightnessValue  = document.getElementById('lightness-value');
@@ -325,6 +335,7 @@
       depthSelect.value = String(depthValue);
       stepSlider.value = String(Math.min(Math.max(safeParseNumber(directives.step, 40), 10), 200));
       angleSlider.value = String(Math.min(Math.max(safeParseNumber(directives.angle, 45), 5), 90));
+      angleMinutesSlider.value = String(Math.min(Math.max(safeParseNumber(directives.angle_minutes, 0), 0), 59));
       weightSlider.value = String(Math.min(Math.max(safeParseNumber(directives.weight, 1.5), 0.5), 5));
       saturationSlider.value = String(Math.min(Math.max(safeParseNumber(directives.saturation, 100), 0), 100));
       lightnessSlider.value = String(Math.min(Math.max(safeParseNumber(directives.lightness, 65), 0), 100));
@@ -336,6 +347,7 @@
     function updateValueDisplays() {
       stepValue.textContent = stepSlider.value;
       angleValue.textContent = angleSlider.value;
+      angleMinutesValue.textContent = angleMinutesSlider.value;
       weightValue.textContent = weightSlider.value;
       saturationValue.textContent = saturationSlider.value;
       lightnessValue.textContent = lightnessSlider.value;
@@ -367,6 +379,7 @@
         depth: depthSelect.value,
         step: stepSlider.value,
         angle: angleSlider.value,
+        angle_minutes: angleMinutesSlider.value,
         weight: weightSlider.value,
         saturation: saturationSlider.value,
         lightness: lightnessSlider.value
@@ -389,6 +402,7 @@
       depthSelect,
       stepSlider,
       angleSlider,
+      angleMinutesSlider,
       weightSlider,
       saturationSlider,
       lightnessSlider
@@ -475,11 +489,11 @@
           }
 
           case '+':
-            state.angle += params.angle;
+            state.angle += params.effectiveAngle;
             break;
 
           case '-':
-            state.angle -= params.angle;
+            state.angle -= params.effectiveAngle;
             break;
 
           case '[':
@@ -573,6 +587,9 @@
           saturation: Math.min(Math.max(safeParseNumber(directives.saturation, 100), 0), 100),
           lightness:  Math.min(Math.max(safeParseNumber(directives.lightness, 65), 0), 100)
         };
+
+        // Calculate effective angle including fine adjustment in minutes of arc
+        params.effectiveAngle = params.angle + (safeParseNumber(directives.angle_minutes, 0) / 60);
 
         // Cap depth at 5
         if (params.depth > 5) {

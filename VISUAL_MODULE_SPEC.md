@@ -849,3 +849,34 @@ Cap the maximum depth at 5 for the current grammar which expands
 significantly faster than the previous default. Update the depth
 dropdown range from 1-10 to 1-5. This supersedes the depth range
 specified in Amendment 6 Part A.
+
+### Amendment 9 — Fine Angle Adjustment Slider (Minutes of Arc)
+
+Add a new slider to visual_module.html for fine angle adjustment in
+minutes of arc. This works independently of the existing angle slider
+and adds a fractional degree offset to it.
+
+#### New Slider
+**Angle Fine (minutes of arc)**
+- Linear slider range 0 to 59
+- Default: 0
+- Label: ANGLE FINE
+- Displays current value in small font adjacent to slider
+- Directive: %%bd_angle_minutes
+
+#### Effective Angle Calculation
+The effective turtle turn angle is calculated as:
+
+effectiveAngle = %%bd_angle + (%%bd_angle_minutes / 60)
+
+This is applied wherever the turtle turn angle is used in the renderer.
+
+#### Behaviour
+Follows the same pattern as all other sliders — set from incoming
+%%bd_angle_minutes directive on BD_INIT, triggers immediate re-render
+on change, included in BD_UPDATE payload when Send Back is pressed.
+
+#### Default Text Update
+Add %%bd_angle_minutes to the default text in index.html:
+
+%%bd_angle_minutes 0
