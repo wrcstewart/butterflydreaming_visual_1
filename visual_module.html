@@ -183,6 +183,14 @@
     </div>
 
     <div class="control-row">
+      <label for="colour-speed-slider">Colour Speed</label>
+      <div class="slider-container">
+        <input id="colour-speed-slider" type="range" min="-2" max="4" step="1" value="2">
+        <span id="colour-speed-value" class="slider-value">4.0x</span>
+      </div>
+    </div>
+
+    <div class="control-row">
       <label for="weight-slider">Line Weight</label>
       <div class="slider-container">
         <input id="weight-slider" type="range" min="0.5" max="5" step="0.1" value="1.5">
@@ -222,12 +230,14 @@
     const stepSlider     = document.getElementById('step-slider');
     const angleSlider    = document.getElementById('angle-slider');
     const angleMinutesSlider = document.getElementById('angle-minutes-slider');
+    const colourSpeedSlider = document.getElementById('colour-speed-slider');
     const weightSlider   = document.getElementById('weight-slider');
     const saturationSlider = document.getElementById('saturation-slider');
     const lightnessSlider  = document.getElementById('lightness-slider');
     const stepValue      = document.getElementById('step-value');
     const angleValue     = document.getElementById('angle-value');
     const angleMinutesValue = document.getElementById('angle-minutes-value');
+    const colourSpeedValue = document.getElementById('colour-speed-value');
     const weightValue    = document.getElementById('weight-value');
     const saturationValue = document.getElementById('saturation-value');
     const lightnessValue  = document.getElementById('lightness-value');
@@ -325,6 +335,12 @@
       return Number.isFinite(n) ? n : fallback;
     }
 
+    function formatDirectiveNumber(value) {
+      if (!Number.isFinite(value)) return String(value);
+      const normalized = Math.round(value * 100) / 100;
+      return normalized.toString();
+    }
+
     function setControlValues(directives) {
       if (!symmetrySelect) return;
       const symmetryValue = safeParseInt(directives.symmetry, 8);
@@ -336,6 +352,9 @@
       stepSlider.value = String(Math.min(Math.max(safeParseNumber(directives.step, 40), 10), 200));
       angleSlider.value = String(Math.min(Math.max(safeParseNumber(directives.angle, 45), 5), 90));
       angleMinutesSlider.value = String(Math.min(Math.max(safeParseNumber(directives.angle_minutes, 0), 0), 59));
+      const colourSpeedValueParsed = Math.min(Math.max(safeParseNumber(directives.colour_speed, 4), 0.25), 16);
+      const colourSpeedExponent = Math.min(Math.max(Math.round(Math.log2(colourSpeedValueParsed)), -2), 4);
+      colourSpeedSlider.value = String(colourSpeedExponent);
       weightSlider.value = String(Math.min(Math.max(safeParseNumber(directives.weight, 1.5), 0.5), 5));
       saturationSlider.value = String(Math.min(Math.max(safeParseNumber(directives.saturation, 100), 0), 100));
       lightnessSlider.value = String(Math.min(Math.max(safeParseNumber(directives.lightness, 65), 0), 100));
@@ -348,6 +367,7 @@
       stepValue.textContent = stepSlider.value;
       angleValue.textContent = angleSlider.value;
       angleMinutesValue.textContent = angleMinutesSlider.value;
+      colourSpeedValue.textContent = `${(2 ** Number(colourSpeedSlider.value)).toFixed(1)}x`;
       weightValue.textContent = weightSlider.value;
       saturationValue.textContent = saturationSlider.value;
       lightnessValue.textContent = lightnessSlider.value;
@@ -380,6 +400,7 @@
         step: stepSlider.value,
         angle: angleSlider.value,
         angle_minutes: angleMinutesSlider.value,
+        colour_speed: formatDirectiveNumber(2 ** Number(colourSpeedSlider.value)),
         weight: weightSlider.value,
         saturation: saturationSlider.value,
         lightness: lightnessSlider.value
@@ -403,6 +424,7 @@
       stepSlider,
       angleSlider,
       angleMinutesSlider,
+      colourSpeedSlider,
       weightSlider,
       saturationSlider,
       lightnessSlider
@@ -469,7 +491,7 @@
             ctx.moveTo(state.x, state.y);
             ctx.quadraticCurveTo(cpx, cpy, nextX, nextY);
             if (angleTracked) {
-              const hue = ((state.angle % 360) + 360) % 360;
+              const hue = (((state.angle % (360 * params.colourSpeed)) + (360 * params.colourSpeed)) % (360 * params.colourSpeed)) / params.colourSpeed;
               ctx.strokeStyle = `hsl(${hue}, ${params.saturation}%, ${params.lightness}%)`;
             } else {
               ctx.strokeStyle = baseStroke;
@@ -585,11 +607,16 @@
           background: directives.background             || '#0a0a0f',
           weight:     Math.min(Math.max(safeParseNumber(directives.weight, 1.5), 0.5), 5),
           saturation: Math.min(Math.max(safeParseNumber(directives.saturation, 100), 0), 100),
-          lightness:  Math.min(Math.max(safeParseNumber(directives.lightness, 65), 0), 100)
+          lightness:  Math.min(Math.max(safeParseNumber(directives.lightness, 65), 0), 100),
+          colourSpeed: Math.min(Math.max(safeParseNumber(directives.colour_speed, 4), 0.25), 16)
         };
 
         // Calculate effective angle including fine adjustment in minutes of arc
         params.effectiveAngle = params.angle + (safeParseNumber(directives.angle_minutes, 0) / 60);
+        // Ensure colourSpeed is valid for hue cycling
+        if (!Number.isFinite(params.colourSpeed) || params.colourSpeed <= 0) {
+          params.colourSpeed = 4;
+        }
 
         // Cap depth at 5
         if (params.depth > 5) {

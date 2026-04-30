@@ -880,3 +880,44 @@ on change, included in BD_UPDATE payload when Send Back is pressed.
 Add %%bd_angle_minutes to the default text in index.html:
 
 %%bd_angle_minutes 0
+
+### Amendment 10 — Colour Speed Control
+
+Add a colour speed parameter that controls how quickly the hue cycles
+through the colour wheel relative to the cumulative turtle angle.
+
+#### Colour Speed Formula
+Replace the current hue calculation with:
+
+```javascript
+const hue = ((state.angle % (360 * speed)) + (360 * speed)) % (360 * speed) / speed
+```
+
+Where speed is the value of %%bd_colour_speed. At speed=1 the behaviour
+is identical to the current system — one full colour cycle per 360° of
+turning. At speed=4 the hue changes four times more slowly, producing
+smoother gradients. At speed=0.25 the hue cycles four times faster.
+
+#### New Slider
+**Colour Speed**
+- Logarithmic scale — slider position range -2 to 4 (the exponent x)
+- Actual speed calculated as: speed = 2^x
+- Marked positions:
+  - -2 = 0.25 (very fast colour cycling)
+  -  0 = 1.0  (current behaviour)
+  -  2 = 4.0  (slow, smooth gradients)
+  -  4 = 16.0 (very slow, almost single colour)
+- Default slider position: 2 (speed = 4.0)
+- Display the calculated value next to the slider e.g. "4.0x"
+- Label: COLOUR SPEED
+- Directive: %%bd_colour_speed
+
+#### Behaviour
+Follows the same pattern as all other sliders — set from incoming
+%%bd_colour_speed directive on BD_INIT, triggers immediate re-render
+on change, included in BD_UPDATE payload when Send Back is pressed.
+
+#### Default Text Update
+Add %%bd_colour_speed to the default text in index.html:
+
+%%bd_colour_speed 4
