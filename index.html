@@ -173,22 +173,7 @@
     <!-- Left column: controls -->
     <div class="panel">
       <label for="ls-input">Extended L-System Notation</label>
-      <textarea id="ls-input" spellcheck="false">%%bd_module visual_module.html
-%%bd_symmetry 8
-%%bd_depth 3
-%%bd_step 40
-%%bd_angle 45
-%%bd_angle_minutes 0
-%%bd_colour_speed 4
-%%bd_stroke angle
-%%bd_saturation 100
-%%bd_lightness 65
-%%bd_background #0a0a0f
-%%bd_weight 1.5
-%%bd_score [
-axiom: F+F+F+F+F+F+F+F
-F: F+F-F-F+F+F+F-F
-%%bd_]</textarea>
+      <textarea id="ls-input" spellcheck="false"></textarea>
 
       <button id="send-btn">Send to Player</button>
 
@@ -247,9 +232,29 @@ F: F+F-F-F+F+F+F-F
       }
     }
 
-    // ── URL parameter loading (Amendment 11, 10.3) ───────────────────────────
-    // If ?script=BASE64 is present, decode and populate textarea before autoload.
-    (function loadScriptParam() {
+    // ── Default script ────────────────────────────────────────────────────────
+    const DEFAULT_SCRIPT = `%%bd_module visual_module.html
+%%bd_symmetry 8
+%%bd_depth 3
+%%bd_step 40
+%%bd_angle 45
+%%bd_angle_minutes 0
+%%bd_colour_speed 4
+%%bd_stroke angle
+%%bd_saturation 100
+%%bd_lightness 65
+%%bd_background #0a0a0f
+%%bd_weight 1.5
+%%bd_score [
+axiom: F+F+F+F+F+F+F+F
+F: F+F-F-F+F+F+F-F
+%%bd_]`;
+
+    // ── Populate textarea then autoload (Amendment 12) ────────────────────────
+    // 1. Check for ?script= URL parameter
+    // 2. If found — decode and use it; if not — use default script
+    // 3. Autoload fires using whatever is now in the textarea
+    (function populateAndAutoload() {
       const params = new URLSearchParams(window.location.search);
       const scriptParam = params.get('script');
       if (scriptParam) {
@@ -257,7 +262,10 @@ F: F+F-F-F+F+F+F-F
           textarea.value = decodeURIComponent(atob(scriptParam));
         } catch (e) {
           console.warn('index: failed to decode ?script param', e);
+          textarea.value = DEFAULT_SCRIPT;
         }
+      } else {
+        textarea.value = DEFAULT_SCRIPT;
       }
     })();
 
