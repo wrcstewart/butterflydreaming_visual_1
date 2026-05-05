@@ -83,6 +83,16 @@
       width: 100%;
     }
 
+    .btn-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-row button {
+      width: auto;
+      flex: 1;
+    }
+
     button:hover {
       background: #1a2a28;
     }
@@ -182,6 +192,11 @@ F: F+F-F-F+F+F+F-F
 
       <button id="send-btn">Send to Player</button>
 
+      <div class="btn-row">
+        <button id="copy-btn">Copy Script</button>
+        <button id="copy-link-btn">Copy Link</button>
+      </div>
+
       <label>Status</label>
       <div class="status" id="status-display">Press Send to Player to load the module.</div>
     </div>
@@ -200,6 +215,8 @@ F: F+F-F-F+F+F+F-F
     // ── Element refs ──────────────────────────────────────────────────────────
     const textarea      = document.getElementById('ls-input');
     const sendBtn       = document.getElementById('send-btn');
+    const copyBtn       = document.getElementById('copy-btn');
+    const copyLinkBtn   = document.getElementById('copy-link-btn');
     const statusDisplay = document.getElementById('status-display');
     const container     = document.getElementById('module-container');
 
@@ -230,6 +247,20 @@ F: F+F-F-F+F+F+F-F
       }
     }
 
+    // ── URL parameter loading (Amendment 11, 10.3) ───────────────────────────
+    // If ?script=BASE64 is present, decode and populate textarea before autoload.
+    (function loadScriptParam() {
+      const params = new URLSearchParams(window.location.search);
+      const scriptParam = params.get('script');
+      if (scriptParam) {
+        try {
+          textarea.value = decodeURIComponent(atob(scriptParam));
+        } catch (e) {
+          console.warn('index: failed to decode ?script param', e);
+        }
+      }
+    })();
+
     // Create iframe on page load and wait for BD_READY before sending initial score
     window.addEventListener('load', () => {
       initializeModule();
@@ -252,6 +283,26 @@ F: F+F-F-F+F+F+F-F
       } else {
         pendingText = text;
       }
+    });
+
+    // ── Copy Script button (Amendment 11, 10.1) ──────────────────────────────
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(textarea.value).then(() => {
+        const original = copyBtn.textContent;
+        copyBtn.textContent = 'Copied ✓';
+        setTimeout(() => { copyBtn.textContent = original; }, 1500);
+      });
+    });
+
+    // ── Copy Link button (Amendment 11, 10.2) ────────────────────────────────
+    copyLinkBtn.addEventListener('click', () => {
+      const encoded = btoa(unescape(encodeURIComponent(textarea.value)));
+      const url = `https://wrcstewart.github.io/butterflydreaming_visual_1/?script=${encoded}`;
+      navigator.clipboard.writeText(url).then(() => {
+        const original = copyLinkBtn.textContent;
+        copyLinkBtn.textContent = 'Link Copied ✓';
+        setTimeout(() => { copyLinkBtn.textContent = original; }, 1500);
+      });
     });
 
     // ── Listen for messages from the module ───────────────────────────────────
