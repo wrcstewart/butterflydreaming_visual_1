@@ -94,12 +94,12 @@
     }
 
     #copy-link-btn {
-      border-color: #3a7a3a;
-      color: #5abf5a;
+      border-color: #3a5a9a;
+      color: #5a8adf;
     }
 
     #copy-link-btn:hover {
-      background: #1a2a1a;
+      background: #1a1a2a;
     }
 
     button:hover {
@@ -268,7 +268,7 @@ F: F+F-F-F+F+F+F-F
       const scriptParam = params.get('script');
       if (scriptParam) {
         try {
-          textarea.value = decodeURIComponent(atob(scriptParam));
+          textarea.value = decodeURIComponent(escape(atob(scriptParam)));
         } catch (e) {
           console.warn('index: failed to decode ?script param', e);
           textarea.value = DEFAULT_SCRIPT;
