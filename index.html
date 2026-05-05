@@ -93,14 +93,6 @@
       flex: 1;
     }
 
-    #copy-link-btn {
-      border-color: #3a5a9a;
-      color: #5a8adf;
-    }
-
-    #copy-link-btn:hover {
-      background: #1a1a2a;
-    }
 
     button:hover {
       background: #1a2a28;
@@ -185,6 +177,7 @@
       <textarea id="ls-input" spellcheck="false"></textarea>
 
       <button id="send-btn">Send to Player</button>
+      <button id="receive-btn">Receive from Player</button>
 
       <div class="btn-row">
         <button id="copy-btn">Copy Script</button>
@@ -209,6 +202,7 @@
     // ── Element refs ──────────────────────────────────────────────────────────
     const textarea      = document.getElementById('ls-input');
     const sendBtn       = document.getElementById('send-btn');
+    const receiveBtn    = document.getElementById('receive-btn');
     const copyBtn       = document.getElementById('copy-btn');
     const copyLinkBtn   = document.getElementById('copy-link-btn');
     const statusDisplay = document.getElementById('status-display');
@@ -299,6 +293,13 @@ F: F+F-F-F+F+F+F-F
         postToModule({ type: 'BD_INIT', payload: { text } });
       } else {
         pendingText = text;
+      }
+    });
+
+    // ── Receive from Player button (Amendment 13) ────────────────────────────
+    receiveBtn.addEventListener('click', () => {
+      if (moduleFrame && moduleReady) {
+        postToModule({ type: 'BD_REQUEST_UPDATE' });
       }
     });
 

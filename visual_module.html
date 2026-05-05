@@ -214,7 +214,6 @@
       </div>
     </div>
 
-    <button id="send-back-btn">Send Back</button>
   </div>
 
   <!-- lindenmayer library for L-system rewriting -->
@@ -241,7 +240,6 @@
     const weightValue    = document.getElementById('weight-value');
     const saturationValue = document.getElementById('saturation-value');
     const lightnessValue  = document.getElementById('lightness-value');
-    const sendBackBtn    = document.getElementById('send-back-btn');
     const canvas         = document.getElementById('kolam-canvas');
     const ctx            = canvas.getContext('2d');
     const canvasWrapper  = document.querySelector('.canvas-wrapper');
@@ -709,6 +707,10 @@
             setStatus('Stopped');
             break;
 
+          case 'BD_REQUEST_UPDATE':
+            postToParent({ type: 'BD_UPDATE', payload: { text: storedText } });
+            break;
+
           default:
             // Ignore unrecognised types
             break;
@@ -716,11 +718,6 @@
       } catch (err) {
         console.error('visual_module: error handling postMessage', err);
       }
-    });
-
-    // ── Send Back Button ──────────────────────────────────────────────────────
-    sendBackBtn.addEventListener('click', () => {
-      postToParent({ type: 'BD_UPDATE', payload: { text: storedText } });
     });
 
     // ── Signal module loaded ──────────────────────────────────────────────────
