@@ -267,6 +267,7 @@ F: F+F-F-F+F+F+F-F
             setStatus('Module ready');
             // Dispatch any init that was queued while the module was loading
             if (pendingText !== null) {
+              postToModule({ type: 'BD_INIT', payload: { text: pendingText } });
               pendingText = null;
             }
             break;
