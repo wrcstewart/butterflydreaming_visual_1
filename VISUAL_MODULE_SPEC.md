@@ -921,3 +921,143 @@ on change, included in BD_UPDATE payload when Send Back is pressed.
 Add %%bd_colour_speed to the default text in index.html:
 
 %%bd_colour_speed 4
+
+**2D VISUAL MODULE — AMENDMENT 11**
+
+**10.1 — Add Copy Script button**
+Add a **Copy** button immediately below or alongside the textarea. When clicked it copies the current textarea content to the clipboard and briefly changes its label to **Copied ✓** for 1.5 seconds to confirm the action.
+
+**10.2 — Add Copy Link button**
+Add a **Copy Link** button alongside the Copy button. When clicked it:
+- Takes the current textarea content
+- Encodes it using Base64 (`btoa(unescape(encodeURIComponent(text)))`)
+- Constructs a full URL in the form `https://wrcstewart.github.io/butterflydreaming_visual_1/?script=BASE64STRING`
+- Copies that URL to the clipboard
+- Briefly changes its label to **Link Copied ✓** for 1.5 seconds to confirm
+
+**10.3 — Load script from URL parameter on startup**
+On page load, before the existing autoload code fires, check for a `script` query parameter in the URL. If present:
+- Decode it using `decodeURIComponent(atob(scriptParam))`
+- Populate the textarea with the decoded content
+- The existing autoload code then picks it up and renders it automatically as normal
+
+If no `script` parameter is present, the existing default script loads and renders as normal. No change to existing autoload behaviour.
+
+**Note for future music module implementation:** The same URL parameter pattern will apply to the music module, but auto-send will populate the textarea and open the player panel only — playback will await the user pressing Play, respecting browser autoplay restrictions.
+
+2D VISUAL MODULE — AMENDMENT 12
+12.1 — Fix URL parameter loading sequence
+The URL parameter loading code added in Amendment 11.3 is not overriding the default script because it is executing after the autoload code. Fix the sequencing so that the URL parameter check runs first, before any default script is applied or any autoload is triggered.
+The correct sequence on page load must be:
+
+Check for ?script= parameter in the URL
+If found — decode it and populate the textarea with the decoded content
+If not found — populate the textarea with the default script
+Autoload fires using whatever is now in the textarea
+
+Yes exactly — the parent sends a `BD_REQUEST_UPDATE` message to the player, the player responds with `BD_UPDATE` containing the current script with slider values written back in. Clean and explicit.
+
+Here is Amendment 13:
+
+---
+
+**2D VISUAL MODULE — AMENDMENT 13**
+
+**13.1 — Add Receive from Player button (index.html)**
+Add a **Receive from Player** button in index.html, positioned between the Send to Player button and the Copy/Copy Link buttons. When clicked it sends a message to the player iframe:
+```javascript
+{ type: 'BD_REQUEST_UPDATE' }
+```
+Then waits for the player to respond with a `BD_UPDATE` message, which updates the textarea as it currently does. No other change to the existing `BD_UPDATE` handler in index.html.
+
+**13.2 — Handle BD_REQUEST_UPDATE in player (visual_module.html)**
+In visual_module.html, add a handler for the new `BD_REQUEST_UPDATE` message type. When received, the player should immediately respond by posting to the parent:
+```javascript
+{ type: 'BD_UPDATE', payload: { text: storedText } }
+```
+where `storedText` is the current script with all slider directive values written back in, exactly as the existing Send Back button does.
+
+**13.3 — Remove Send Back button (visual_module.html)**
+Remove the Send Back button and its click event listener from visual_module.html entirely. The push model is replaced by the pull model via BD_REQUEST_UPDATE. No other changes to visual_module.html.
+
+**Note for future platform development:** The push vs pull decision for the collaborative protocol should be revisited during deep design of the dyadic editing session. Both models have merit in that context and the choice should follow from the consent and agency principles in the ethics framework.
+
+---Also remove colour blue from copy button.
+
+Of course. Here it is:
+
+---
+
+### Amendment 14 — Very Fine Angle Adjustment Slider (Seconds of Arc)
+
+Add a new slider to `visual_module.html` for very fine angle adjustment in seconds of arc. This works independently of the existing angle and angle-fine sliders and adds a fractional offset to the effective angle.
+
+#### New Slider
+**Angle Very Fine (seconds of arc)**
+- Linear slider range 0 to 59
+- Default: 0
+- Label: ANGLE VERY FINE
+- Displays current value in small font adjacent to slider
+- Directive: `%%bd_angle_seconds`
+- Positioned immediately below the ANGLE FINE (minutes) slider, grouped visually with the degrees and minutes sliders
+
+#### Effective Angle Calculation
+The effective turtle turn angle is now calculated as:
+
+```
+effectiveAngle = %%bd_angle + (%%bd_angle_minutes / 60) + (%%bd_angle_seconds / 3600)
+```
+
+This replaces the two-term formula introduced in Amendment 9. All three terms contribute to a single effective angle value applied wherever the turtle turn angle is used in the renderer.
+
+#### Behaviour
+Follows the same pattern as all other sliders — set from incoming `%%bd_angle_seconds` directive on BD_INIT, triggers immediate re-render on change, included in BD_UPDATE payload when BD_REQUEST_UPDATE is received.
+
+#### Default Text Update
+Add `%%bd_angle_seconds` to the default text in `index.html`, positioned immediately after `%%bd_angle_minutes`:
+
+```
+%%bd_angle_seconds 0
+```
+
+---
+
+### Amendment 15 — Angle Drift Automation
+
+Add a drift control to `visual_module.html` that automatically advances the angle by a fixed number of seconds of arc on a 2-second redraw cycle. The three angle sliders (degrees, minutes, seconds) update visually after each redraw, making the carry propagation visible.
+
+#### New Slider
+**Angle Very Fine Speed**
+- Linear slider range 0 to 10 (seconds of arc per 2-second tick)
+- Integer steps
+- Default: 0
+- Label: ANGLE DRIFT
+- Displays current value in small font adjacent to slider
+- Directive: `%%bd_angle_drift`
+- Positioned immediately below the ANGLE VERY FINE slider
+
+#### Tick Behaviour
+On each 2-second tick:
+1. Advance the total angle accumulator by the drift value in seconds of arc
+2. Propagate carry through the three angle components:
+   - `angle_seconds` advances by drift amount; any excess of 60 carries into `angle_minutes`
+   - `angle_minutes` wraps at 60, carrying into `angle_degrees`
+   - `angle_degrees` wraps at 360
+3. Update all three angle slider positions and displayed values to reflect the new state
+4. Trigger a full re-render
+
+#### Interval Management
+- When drift is set to 0 the interval is cleared and no redraws are scheduled
+- When drift is set to any non-zero value the 2-second interval is started if not already running
+- Dragging the drift slider from non-zero back to zero clears the interval immediately
+
+#### Behaviour
+Follows the same pattern as all other angle-related sliders — set from incoming `%%bd_angle_drift` directive on BD_INIT, written back into the script on BD_REQUEST_UPDATE alongside the current values of `%%bd_angle`, `%%bd_angle_minutes` and `%%bd_angle_seconds`.
+
+#### Default Text Update
+Add `%%bd_angle_drift` to the default text in `index.html`, positioned immediately after `%%bd_angle_seconds`:
+
+```
+%%bd_angle_drift 0
+```
+

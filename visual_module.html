@@ -183,6 +183,22 @@
     </div>
 
     <div class="control-row">
+      <label for="angle-seconds-slider">Angle Very Fine</label>
+      <div class="slider-container">
+        <input id="angle-seconds-slider" type="range" min="0" max="59" step="1" value="0">
+        <span id="angle-seconds-value" class="slider-value">0</span>
+      </div>
+    </div>
+
+    <div class="control-row">
+      <label for="angle-drift-slider">Angle Drift</label>
+      <div class="slider-container">
+        <input id="angle-drift-slider" type="range" min="0" max="10" step="1" value="0">
+        <span id="angle-drift-value" class="slider-value">0</span>
+      </div>
+    </div>
+
+    <div class="control-row">
       <label for="colour-speed-slider">Colour Speed</label>
       <div class="slider-container">
         <input id="colour-speed-slider" type="range" min="-2" max="4" step="1" value="2">
@@ -229,6 +245,8 @@
     const stepSlider     = document.getElementById('step-slider');
     const angleSlider    = document.getElementById('angle-slider');
     const angleMinutesSlider = document.getElementById('angle-minutes-slider');
+    const angleSecondsSlider = document.getElementById('angle-seconds-slider');
+    const angleDriftSlider  = document.getElementById('angle-drift-slider');
     const colourSpeedSlider = document.getElementById('colour-speed-slider');
     const weightSlider   = document.getElementById('weight-slider');
     const saturationSlider = document.getElementById('saturation-slider');
@@ -236,6 +254,8 @@
     const stepValue      = document.getElementById('step-value');
     const angleValue     = document.getElementById('angle-value');
     const angleMinutesValue = document.getElementById('angle-minutes-value');
+    const angleSecondsValue = document.getElementById('angle-seconds-value');
+    const angleDriftValue   = document.getElementById('angle-drift-value');
     const colourSpeedValue = document.getElementById('colour-speed-value');
     const weightValue    = document.getElementById('weight-value');
     const saturationValue = document.getElementById('saturation-value');
@@ -254,8 +274,9 @@
     }
 
     // ── Module state ──────────────────────────────────────────────────────────
-    let storedText = ''; // full node text, saved for Send Back
-    let lastError  = null;
+    let storedText    = ''; // full node text, kept current by render()
+    let lastError     = null;
+    let driftInterval = null; // setInterval handle for angle drift automation
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     const setStatus = (msg) => { statusEl.textContent = msg; };
@@ -350,6 +371,9 @@
       stepSlider.value = String(Math.min(Math.max(safeParseNumber(directives.step, 40), 10), 200));
       angleSlider.value = String(Math.min(Math.max(safeParseNumber(directives.angle, 45), 5), 90));
       angleMinutesSlider.value = String(Math.min(Math.max(safeParseNumber(directives.angle_minutes, 0), 0), 59));
+      angleSecondsSlider.value = String(Math.min(Math.max(safeParseNumber(directives.angle_seconds, 0), 0), 59));
+      angleDriftSlider.value   = String(Math.min(Math.max(safeParseInt(directives.angle_drift, 0), 0), 10));
+      manageDriftInterval();
       const colourSpeedValueParsed = Math.min(Math.max(safeParseNumber(directives.colour_speed, 4), 0.25), 16);
       const colourSpeedExponent = Math.min(Math.max(Math.round(Math.log2(colourSpeedValueParsed)), -2), 4);
       colourSpeedSlider.value = String(colourSpeedExponent);
@@ -365,6 +389,8 @@
       stepValue.textContent = stepSlider.value;
       angleValue.textContent = angleSlider.value;
       angleMinutesValue.textContent = angleMinutesSlider.value;
+      angleSecondsValue.textContent = angleSecondsSlider.value;
+      angleDriftValue.textContent   = angleDriftSlider.value;
       colourSpeedValue.textContent = `${(2 ** Number(colourSpeedSlider.value)).toFixed(1)}x`;
       weightValue.textContent = weightSlider.value;
       saturationValue.textContent = saturationSlider.value;
@@ -398,6 +424,8 @@
         step: stepSlider.value,
         angle: angleSlider.value,
         angle_minutes: angleMinutesSlider.value,
+        angle_seconds: angleSecondsSlider.value,
+        angle_drift:   angleDriftSlider.value,
         colour_speed: formatDirectiveNumber(2 ** Number(colourSpeedSlider.value)),
         weight: weightSlider.value,
         saturation: saturationSlider.value,
@@ -422,6 +450,8 @@
       stepSlider,
       angleSlider,
       angleMinutesSlider,
+      angleSecondsSlider,
+      angleDriftSlider,
       colourSpeedSlider,
       weightSlider,
       saturationSlider,
@@ -431,6 +461,58 @@
     controlInputs.forEach((input) => {
       input.addEventListener('input', handleControlChange);
     });
+
+    // ── Angle Drift Automation ────────────────────────────────────────────────
+    // Advance angle by drift (seconds of arc) every 2 seconds, propagating carry
+    // through seconds → minutes → degrees. The interval is started/stopped as
+    // the drift slider moves between zero and non-zero.
+
+    function manageDriftInterval() {
+      const drift = parseInt(angleDriftSlider.value, 10);
+      if (drift === 0) {
+        if (driftInterval !== null) {
+          clearInterval(driftInterval);
+          driftInterval = null;
+        }
+      } else if (driftInterval === null) {
+        driftInterval = setInterval(driftTick, 200);
+      }
+    }
+
+    function driftTick() {
+      const drift = parseInt(angleDriftSlider.value, 10);
+      if (drift === 0) {
+        manageDriftInterval();
+        return;
+      }
+
+      let secs = parseInt(angleSecondsSlider.value, 10) + drift;
+      let mins = parseInt(angleMinutesSlider.value, 10);
+      let degs = parseInt(angleSlider.value, 10);
+
+      // Propagate carry upward
+      mins += Math.floor(secs / 60);
+      secs  = secs % 60;
+
+      degs += Math.floor(mins / 60);
+      mins  = mins % 60;
+
+      degs  = ((degs % 360) + 360) % 360;
+
+      angleSlider.value        = String(degs);
+      angleMinutesSlider.value = String(mins);
+      angleSecondsSlider.value = String(secs);
+
+      updateValueDisplays();
+
+      if (storedText) {
+        const updatedText = applyControlDirectives(storedText);
+        render(updatedText);
+      }
+    }
+
+    // Manage interval whenever the drift slider moves
+    angleDriftSlider.addEventListener('input', manageDriftInterval);
 
     // ── Turtle State ──────────────────────────────────────────────────────────
     function createTurtleState(x, y) {
@@ -609,8 +691,8 @@
           colourSpeed: Math.min(Math.max(safeParseNumber(directives.colour_speed, 4), 0.25), 16)
         };
 
-        // Calculate effective angle including fine adjustment in minutes of arc
-        params.effectiveAngle = params.angle + (safeParseNumber(directives.angle_minutes, 0) / 60);
+        // Calculate effective angle including fine (minutes) and very fine (seconds) adjustments
+        params.effectiveAngle = params.angle + (safeParseNumber(directives.angle_minutes, 0) / 60) + (safeParseNumber(directives.angle_seconds, 0) / 3600);
         // Ensure colourSpeed is valid for hue cycling
         if (!Number.isFinite(params.colourSpeed) || params.colourSpeed <= 0) {
           params.colourSpeed = 4;
@@ -702,6 +784,7 @@
           }
 
           case 'BD_STOP':
+            if (driftInterval !== null) { clearInterval(driftInterval); driftInterval = null; }
             ctx.fillStyle = '#0a0a0f';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             setStatus('Stopped');
