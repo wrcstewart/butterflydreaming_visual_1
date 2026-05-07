@@ -124,6 +124,72 @@
       max-width: 100%;
       height: auto;
     }
+
+    /* Amendment 16 — visual hierarchy for angle slider thumbs */
+    #angle-minutes-slider,
+    #angle-seconds-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+    }
+
+    #angle-minutes-slider::-webkit-slider-runnable-track,
+    #angle-seconds-slider::-webkit-slider-runnable-track {
+      height: 4px;
+      background: rgba(74, 155, 142, 0.4);
+      border-radius: 2px;
+    }
+
+    #angle-minutes-slider::-moz-range-track,
+    #angle-seconds-slider::-moz-range-track {
+      height: 4px;
+      background: rgba(74, 155, 142, 0.4);
+      border-radius: 2px;
+    }
+
+    /* ANGLE FINE (minutes) — 50% thumb, 0.5 opacity */
+    #angle-minutes-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4a9b8e;
+      opacity: 0.5;
+      cursor: pointer;
+      margin-top: -2px;
+    }
+
+    #angle-minutes-slider::-moz-range-thumb {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4a9b8e;
+      opacity: 0.5;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* ANGLE VERY FINE (seconds) — 25% thumb, 0.25 opacity */
+    #angle-seconds-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #4a9b8e;
+      opacity: 0.25;
+      cursor: pointer;
+      margin-top: 0;
+    }
+
+    #angle-seconds-slider::-moz-range-thumb {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #4a9b8e;
+      opacity: 0.25;
+      border: none;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
