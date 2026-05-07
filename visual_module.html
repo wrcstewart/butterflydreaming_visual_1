@@ -529,26 +529,36 @@
     });
 
     // ── Angle Drift Automation ────────────────────────────────────────────────
-    // Advance angle by drift (seconds of arc) every 2 seconds, propagating carry
-    // through seconds → minutes → degrees. The interval is started/stopped as
-    // the drift slider moves between zero and non-zero.
+    // Advance angle by drift (seconds of arc) on a depth-dependent interval,
+    // propagating carry through seconds → minutes → degrees. Uses setTimeout
+    // so the interval can change dynamically between ticks.
+
+    // Depth-dependent tick interval (Amendment 17)
+    function driftIntervalMs() {
+      const depth = parseInt(depthSelect.value, 10);
+      const table = { 1: 100, 2: 100, 3: 100, 4: 200, 5: 1000 };
+      return table[depth] ?? 200;
+    }
 
     function manageDriftInterval() {
       const drift = parseInt(angleDriftSlider.value, 10);
       if (drift === 0) {
         if (driftInterval !== null) {
-          clearInterval(driftInterval);
+          clearTimeout(driftInterval);
           driftInterval = null;
         }
       } else if (driftInterval === null) {
-        driftInterval = setInterval(driftTick, 200);
+        driftInterval = setTimeout(driftTick, driftIntervalMs());
       }
     }
 
     function driftTick() {
+      // Do NOT null driftInterval here — manageDriftInterval (called via render →
+      // setControlValues) checks it to avoid double-scheduling. We overwrite the
+      // stale handle at the end once we know whether to continue.
       const drift = parseInt(angleDriftSlider.value, 10);
       if (drift === 0) {
-        manageDriftInterval();
+        driftInterval = null; // stopped — allow manageDriftInterval to restart later
         return;
       }
 
@@ -575,9 +585,12 @@
         const updatedText = applyControlDirectives(storedText);
         render(updatedText);
       }
+
+      // Overwrite the now-fired (stale) handle with the next tick
+      driftInterval = setTimeout(driftTick, driftIntervalMs());
     }
 
-    // Manage interval whenever the drift slider moves
+    // Manage timeout whenever the drift slider moves
     angleDriftSlider.addEventListener('input', manageDriftInterval);
 
     // ── Turtle State ──────────────────────────────────────────────────────────
@@ -850,7 +863,7 @@
           }
 
           case 'BD_STOP':
-            if (driftInterval !== null) { clearInterval(driftInterval); driftInterval = null; }
+            if (driftInterval !== null) { clearTimeout(driftInterval); driftInterval = null; }
             ctx.fillStyle = '#0a0a0f';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             setStatus('Stopped');
