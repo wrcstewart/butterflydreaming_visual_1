@@ -1060,4 +1060,55 @@ Add `%%bd_angle_drift` to the default text in `index.html`, positioned immediate
 ```
 %%bd_angle_drift 0
 ```
+### Amendment 16 — Angle Slider Thumb Visual Hierarchy
 
+Apply a permanent visual hierarchy to the three angle slider thumbs in `visual_module.html` reflecting how frequently each will be adjusted. Implemented entirely in CSS — no JavaScript involved.
+
+The standard browser thumb size is taken as the baseline. Brightness is applied via the `opacity` property.
+
+#### Thumb Styling
+
+**ANGLE (degrees)**
+- Thumb size: unchanged (baseline)
+- Thumb opacity: unchanged (baseline)
+
+**ANGLE FINE (minutes) — `%%bd_angle_minutes` slider**
+- Thumb size: 50% of baseline
+- Thumb opacity: 0.5
+
+**ANGLE VERY FINE (seconds) — `%%bd_angle_seconds` slider**
+- Thumb size: 25% of baseline
+- Thumb opacity: 0.25
+
+#### Implementation
+Target each slider by its existing id using both vendor prefixes:
+
+```css
+#angle-minutes-slider::-webkit-slider-thumb { ... }
+#angle-minutes-slider::-moz-range-thumb { ... }
+#angle-seconds-slider::-webkit-slider-thumb { ... }
+#angle-seconds-slider::-moz-range-thumb { ... }
+```
+
+No changes to `index.html`. No changes to the BD messaging protocol. No new directives.
+### Amendment 17 — Depth-Dependent Drift Interval
+
+Replace the fixed 2-second drift interval with a depth-dependent interval table. The interval is re-evaluated at the end of each tick, so a depth change mid-drift takes effect cleanly at the start of the next tick.
+
+#### Interval Table
+
+| Depth | Interval (seconds) |
+|-------|--------------------|
+| 1 | 0.1 |
+| 2 | 0.1 |
+| 3 | 0.1 |
+| 4 | 0.2 |
+| 5 | 1.0 |
+
+#### Implementation
+At the end of each drift tick, before scheduling the next timeout, read the current depth value and look up the interval from the table above. Use `setTimeout` rather than `setInterval` so the interval can vary dynamically.
+
+#### Behaviour
+- If depth changes while drift is running the new interval takes effect at the start of the next tick
+- If drift is zero no timeout is scheduled regardless of depth
+- All other drift behaviour from Amendment 15 is unchanged
